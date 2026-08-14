@@ -72,7 +72,14 @@ async def download_and_record(gigafile_url: str) -> str:
         gigafile_url: ギガファイル便のURL（例: https://gigafile.nu/XXXXXXXX）
     """
     # 1. ダウンロード
-    downloaded_files = await download_gigafile_url(gigafile_url, DOWNLOAD_DIR)
+    try:
+        downloaded_files = await download_gigafile_url(gigafile_url, DOWNLOAD_DIR)
+    except Exception as e:
+        return (
+            "❌ ダウンロード処理でエラーが発生しました。\n"
+            f"詳細: {type(e).__name__}: {e}\n"
+            "URLの有効期限やギガファイル便側の混雑状況を確認し、もう一度試してください。"
+        )
 
     if not downloaded_files:
         return "ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"

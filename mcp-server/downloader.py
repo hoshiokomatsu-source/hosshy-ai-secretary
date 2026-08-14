@@ -5,7 +5,13 @@ import re
 import asyncio
 from pathlib import Path
 from datetime import datetime
-from playwright.async_api import async_playwright, Download
+from playwright.async_api import async_playwright, Download, TimeoutError as PlaywrightTimeoutError
+
+DOWNLOAD_BUTTON_SELECTOR = (
+    "input[type='button'][value*='ダウンロード'], "
+    "button:has-text('ダウンロード'), "
+    "a:has-text('ダウンロード')"
+)
 
 
 async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
@@ -23,15 +29,19 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
         context = await browser.new_context(accept_downloads=True)
         page = await context.new_page()
 
-        await page.goto(url, wait_until="networkidle", timeout=30_000)
+        # ギガファイル便は広告・解析スクリプトのバックグラウンド通信が続くため
+        # "networkidle" だと（実際にはページが表示済みでも）タイムアウトしやすい。
+        # DOM構築完了まで待ち、あとはダウンロードボタンの出現を明示的に待つ。
+        await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+
+        try:
+            await page.wait_for_selector(DOWNLOAD_BUTTON_SELECTOR, timeout=30_000)
+        except PlaywrightTimeoutError:
+            pass  # ボタンが見つからない場合は下のフォールバック検索に任せる
 
         # ギガファイル便のダウンロードボタンを探す
         # 複数ファイルが含まれる場合を考慮して全ボタンを取得
-        download_buttons = await page.query_selector_all(
-            "input[type='button'][value*='ダウンロード'], "
-            "button:has-text('ダウンロード'), "
-            "a:has-text('ダウンロード')"
-        )
+        download_buttons = await page.query_selector_all(DOWNLOAD_BUTTON_SELECTOR)
 
         if not download_buttons:
             # フォールバック: ページ内の全ダウンロードリンクを試す
