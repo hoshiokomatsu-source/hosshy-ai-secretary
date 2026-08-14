@@ -10,7 +10,10 @@ Cloudflare Tunnel で外部公開する場合:
 
 import os
 from dotenv import load_dotenv
-from mcp.server.fastmcp import FastMCP
+try:
+    from mcp.server.fastmcp import FastMCP
+except ImportError:
+    from mcp import FastMCP
 
 from downloader import download_gigafile_url
 from sheets import write_files_to_sheet
