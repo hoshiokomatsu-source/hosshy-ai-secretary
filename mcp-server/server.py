@@ -1,19 +1,26 @@
 """ホッシーくん MCP サーバー
 
+Claude.ai / Claude Cowork の「カスタムコネクタ」はOAuth 2.1認証を
+必須にしているため、oauth_provider.py の簡易OAuthプロバイダーを
+組み込んだ上で、Cloudflare Tunnel等で公開したHTTPS URLを登録する。
+
 起動方法:
-  python server.py
+  PUBLIC_URL=https://xxxx.trycloudflare.com python server.py
 
 Cloudflare Tunnel で外部公開する場合:
   cloudflared tunnel --url http://localhost:8000
-  → 発行されたURLを Claude.ai の設定 > Integrations > MCP に登録する
+  → 発行されたURLを PUBLIC_URL に設定してサーバーを起動し直し、
+    そのURLを Claude.ai の コネクタ に登録する
 """
 
 import os
 from dotenv import load_dotenv
+from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
 from downloader import download_gigafile_url
+from oauth_provider import SingleUserOAuthProvider
 from sheets import write_files_to_sheet
 
 load_dotenv()
@@ -24,14 +31,34 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", os.path.expanduser(
 
 PORT = int(os.getenv("PORT", "8000"))
 
+# Cloudflare Tunnelで発行されたURL。起動のたびに変わるので毎回 .env か
+# 環境変数で渡す。設定されていなければOAuthなしのローカル動作にフォールバックする。
+PUBLIC_URL = os.getenv("PUBLIC_URL")
+
 # Cloudflare Tunnel経由だとHostヘッダーがlocalhost以外になるため、
 # デフォルトのDNS rebinding protectionを無効化しておく
 # （無効化しないとHostヘッダー不一致で例外が発生しサーバーごと落ちる）
-mcp = FastMCP(
-    "hosshy-secretary",
-    port=PORT,
-    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
-)
+_transport_security = TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+if PUBLIC_URL:
+    mcp = FastMCP(
+        "hosshy-secretary",
+        port=PORT,
+        transport_security=_transport_security,
+        auth_server_provider=SingleUserOAuthProvider(),
+        auth=AuthSettings(
+            issuer_url=PUBLIC_URL,
+            resource_server_url=PUBLIC_URL,
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,
+                valid_scopes=["hosshy"],
+                default_scopes=["hosshy"],
+            ),
+            revocation_options=RevocationOptions(enabled=True),
+        ),
+    )
+else:
+    mcp = FastMCP("hosshy-secretary", port=PORT, transport_security=_transport_security)
 
 
 @mcp.tool()
@@ -81,4 +108,8 @@ if __name__ == "__main__":
     import uvicorn
     app = mcp.sse_app()
     print(f"🚀 ホッシーくん起動中... http://0.0.0.0:{PORT}")
+    if PUBLIC_URL:
+        print(f"🔐 OAuth有効: {PUBLIC_URL}")
+    else:
+        print("⚠️  PUBLIC_URLが未設定のためOAuthは無効です（ローカルテスト用）")
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
