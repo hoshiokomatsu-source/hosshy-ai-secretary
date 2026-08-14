@@ -15,6 +15,11 @@ venv/
 node_modules/
 .next/
 
+# Secrets
+credentials.json
+token.json
+*.json.secret
+
 # Logs
 *.log
 
