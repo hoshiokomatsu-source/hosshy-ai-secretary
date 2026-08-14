@@ -106,10 +106,12 @@ async def list_downloaded_files() -> str:
 
 if __name__ == "__main__":
     import uvicorn
-    app = mcp.sse_app()
-    print(f"🚀 ホッシーくん起動中... http://0.0.0.0:{PORT}")
+    # Claude.aiの最新コネクタは Streamable HTTP（/mcp）を前提にしているため、
+    # 旧来のSSE（/sse）ではなくこちらを使う。
+    app = mcp.streamable_http_app()
+    print(f"🚀 ホッシーくん起動中... http://0.0.0.0:{PORT}/mcp")
     if PUBLIC_URL:
-        print(f"🔐 OAuth有効: {PUBLIC_URL}")
+        print(f"🔐 OAuth有効: {PUBLIC_URL}/mcp をClaudeのコネクタに登録してください")
     else:
         print("⚠️  PUBLIC_URLが未設定のためOAuthは無効です（ローカルテスト用）")
     uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
