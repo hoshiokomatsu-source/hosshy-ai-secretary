@@ -48,7 +48,10 @@ if PUBLIC_URL:
         auth_server_provider=SingleUserOAuthProvider(),
         auth=AuthSettings(
             issuer_url=PUBLIC_URL,
-            resource_server_url=PUBLIC_URL,
+            # Claude.aiに登録するURL（末尾/mcp付き）と完全一致させる必要がある。
+            # ここが不一致だと、OAuth自体は成功するのに「MCPサーバーが見つからない」
+            # というエラーになる（保護リソースメタデータのresourceフィールド不一致）。
+            resource_server_url=f"{PUBLIC_URL}/mcp",
             client_registration_options=ClientRegistrationOptions(
                 enabled=True,
                 valid_scopes=["hosshy"],
