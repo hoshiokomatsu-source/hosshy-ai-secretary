@@ -70,4 +70,7 @@ async def list_downloaded_files() -> str:
 
 
 if __name__ == "__main__":
-    mcp.run(transport="sse")
+    import uvicorn
+    app = mcp.sse_app()
+    print(f"🚀 ホッシーくん起動中... http://0.0.0.0:{PORT}")
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="info")
