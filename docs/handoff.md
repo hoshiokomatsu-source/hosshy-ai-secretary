@@ -1,4 +1,4 @@
-# 引き継ぎ書（次のチャット用・2026-08-14 22:06時点）
+# 引き継ぎ書（次のチャット用・2026-08-14 22:27時点）
 
 ## このプロジェクトは何か
 
@@ -53,25 +53,38 @@ GitHubリポジトリ: `git@github.com:hoshiokomatsu-source/hosshy-ai-secretary.
      Cowork/Dispatchでは使えない（Claude Desktopの通常チャットでのみ有効）
    - なのでCloudflare Tunnel + OAuthの構成が必須という結論に至った
 
+5. **✅ Claude.aiコネクタの接続に成功（2026-08-14 22:26頃）**
+   - 原因は`resource_server_url`に`/mcp`パスが付いていなかったこと
+     （詳細はトラブルシューティング履歴を参照）。修正してcommit・push済み
+   - サーバーのログで、Anthropic公式の送信元IPレンジ（`160.79.104.0/21`、
+     実際に来たのは`160.79.106.x`）からの接続を確認：
+     `/register`→`/authorize`→`/token`→`POST /mcp`(initialize)まで200 OK、
+     さらに`ListToolsRequest` / `ListPromptsRequest` / `ListResourcesRequest`
+     もすべて200 OKで応答している
+   - Claude.ai側のコネクタ一覧でも「hossy」に緑のチェックマークが表示され
+     「接続済み」になったことを確認済み
+
 ### 直近でやったこと・今の課題
 
-- Cloudflare Tunnelを起動し、`PUBLIC_URL`にそのURLを設定してサーバーを
-  起動 → Claude.aiのコネクタ設定に `https://xxxx.trycloudflare.com/mcp`
-  を登録してもらう、というところまで進めた
-- 「アカウントは認証されましたが、指定されたURLにMCPサーバーが見つから
-  ない」というエラーが出たため `/sse` → `/mcp`（Streamable HTTP）に
-  切り替えて再度試している最中（**この結果がまだ確認できていない**）
+- 上記の通りOAuth接続は解決した。**次はツールが実際にClaudeのチャットで
+  見えるか（`download_and_record` / `list_downloaded_files`）、そして
+  実際にギガファイル便のURLを送ってダウンロード動作するかがまだ未確認**
+- なお、コネクタが一度「登録失敗」の状態になったとき、既存の古いコネクタ
+  エントリの「再接続」ボタンを押しても直らなかった。**古いTunnel URLが
+  紐づいたままの状態では「再接続」ではなく、一度削除してから新しいURLで
+  「カスタムコネクタを追加」し直す必要がある**（トラブルシューティング
+  履歴に追記済み）
 
 ### 次にやるべきこと
 
-1. ホシさんに、新しいURL（末尾`/mcp`付き）でコネクタ登録を試してもらった
-   結果を確認する
-2. 繋がったら、Claudeのチャットで「ツールが使えるか確認して」と送り、
-   `download_and_record` / `list_downloaded_files` が認識されるか確認
-3. 実際にギガファイル便のリンクを送って、ダウンロード→
+1. Claudeのチャットで「ツールが使えるか確認して」と送り、
+   `download_and_record` / `list_downloaded_files` が実際に見えるか確認
+   （サーバーログ上は`ListToolsRequest`が200 OKで通っているので、
+   高い確率で見えているはず）
+2. 実際にギガファイル便のリンクを送って、ダウンロード→
    `~/Dropbox/Movie Edit/R4/Active` への保存まで動くか確認
-4. まだつまずくようなら、サーバーのログ（`uvicorn`の出力）を確認する
-5. Google Sheets連携（`sheets.py`）はまだ未設定なので、ダウンロードが
+3. まだつまずくようなら、サーバーのログ（`uvicorn`の出力）を確認する
+4. Google Sheets連携（`sheets.py`）はまだ未設定なので、ダウンロードが
    安定したら着手する
 
 ---
@@ -161,6 +174,8 @@ GOOGLE_CREDENTIALS_PATH=/Users/hoshiokomatsu/.config/hosshy/credentials.json  �
 | 「サインインサービスに登録できませんでした」 | Claude.aiのコネクタはOAuth必須。サーバー未実装だった | `oauth_provider.py`で簡易OAuthを実装済み |
 | 「MCPサーバーが見つからない」（OAuth認証は成功） | `/sse`（旧SSE方式）にURLを向けていたが、最新コネクタは`/mcp`（Streamable HTTP）を要求 | `mcp.streamable_http_app()`に切り替え済み。URLは末尾`/mcp`必須 |
 | Claude Desktopの`claude_desktop_config.json`にMCPサーバーを直接書けば楽では? | ローカルstdio方式はCowork/Dispatchでは使えない（通常のClaude Desktopチャットのみ対応） | 使わない方針に確定 |
+| `/mcp`に切り替えてもなお「アカウントは認証されましたが、指定されたURLにMCPサーバーが見つからない」 | `AuthSettings(resource_server_url=PUBLIC_URL)`のように**パスなし**で設定していたため、`.well-known/oauth-protected-resource`が返す`resource`フィールドが`https://xxx.trycloudflare.com/`（`/mcp`なし）になり、Claude.aiに登録したURL（`/mcp`付き）と不一致だった。Anthropic公式ドキュメントは「resourceフィールドはコネクタ登録URLとパスも含めて完全一致が必要」と明記している | `resource_server_url=f"{PUBLIC_URL}/mcp"`に修正（`issuer_url`はパスなしのまま）。curlで`.well-known/oauth-protected-resource/mcp`の`resource`が`.../mcp`と一致することを確認してから登録すること |
+| コネクタが「hossyのサインインサービスに登録できませんでした」で失敗、「再接続」を押しても直らない | Tunnel URLは再起動のたびに変わるのに、Claude.ai側の既存コネクタエントリは**最初に登録した古いURL**を覚えたまま。「再接続」はその古い（もう死んでいる）URLに対して行われるため必ず失敗する | 「再接続」ではなく、一度コネクタを**削除**してから、現在生きている最新のURLで「カスタムコネクタを追加」からやり直す |
 
 ---
 
