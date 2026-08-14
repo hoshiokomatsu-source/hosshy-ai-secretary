@@ -23,7 +23,7 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", os.path.expanduser(
 
 PORT = int(os.getenv("PORT", "8000"))
 
-mcp = FastMCP("hosshy-secretary")
+mcp = FastMCP("hosshy-secretary", port=PORT)
 
 
 @mcp.tool()
@@ -70,4 +70,4 @@ async def list_downloaded_files() -> str:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport="streamable-http")
