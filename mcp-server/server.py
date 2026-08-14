@@ -11,6 +11,7 @@ Cloudflare Tunnel で外部公開する場合:
 import os
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 
 from downloader import download_gigafile_url
 from sheets import write_files_to_sheet
@@ -23,7 +24,14 @@ DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", os.path.expanduser(
 
 PORT = int(os.getenv("PORT", "8000"))
 
-mcp = FastMCP("hosshy-secretary", port=PORT)
+# Cloudflare Tunnel経由だとHostヘッダーがlocalhost以外になるため、
+# デフォルトのDNS rebinding protectionを無効化しておく
+# （無効化しないとHostヘッダー不一致で例外が発生しサーバーごと落ちる）
+mcp = FastMCP(
+    "hosshy-secretary",
+    port=PORT,
+    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+)
 
 
 @mcp.tool()
