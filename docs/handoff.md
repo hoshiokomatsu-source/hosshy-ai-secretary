@@ -1,4 +1,4 @@
-# 引き継ぎ書（次のチャット用・2026-08-14 22:27時点）
+# 引き継ぎ書（次のチャット用・2026-08-14 22:41時点）
 
 ## このプロジェクトは何か
 
@@ -64,28 +64,39 @@ GitHubリポジトリ: `git@github.com:hoshiokomatsu-source/hosshy-ai-secretary.
    - Claude.ai側のコネクタ一覧でも「hossy」に緑のチェックマークが表示され
      「接続済み」になったことを確認済み
 
+6. **✅ 実際のダウンロード動作も成功（2026-08-14 22:40頃）**
+   - `downloader.py`の`page.goto(url, wait_until="networkidle", timeout=30_000)`
+     が原因でタイムアウトしていた問題を修正（詳細はトラブルシューティング
+     履歴を参照）。修正してcommit・push・`~/hosshy`側で反映・サーバー
+     再起動（Tunnelは張り直さずそのまま維持）済み
+   - Claudeのチャットから実際のギガファイル便URLを送信 → Claude.ai側から
+     `CallToolRequest`（`download_and_record`）が実行され、
+     `~/Dropbox/Movie Edit/R4/Active`に実ファイル
+     （`20260124_FULL.mp4`, 約725MB）が保存されたことをファイルシステムで
+     直接確認済み
+   - **これで「スマホ/PCのClaude.aiにギガファイル便リンクを送るだけで
+     Macが自動ダウンロードする」という当初のゴールの中核部分は達成できた**
+
 ### 直近でやったこと・今の課題
 
-- 上記の通りOAuth接続は解決した。**次はツールが実際にClaudeのチャットで
-  見えるか（`download_and_record` / `list_downloaded_files`）、そして
-  実際にギガファイル便のURLを送ってダウンロード動作するかがまだ未確認**
-- なお、コネクタが一度「登録失敗」の状態になったとき、既存の古いコネクタ
-  エントリの「再接続」ボタンを押しても直らなかった。**古いTunnel URLが
-  紐づいたままの状態では「再接続」ではなく、一度削除してから新しいURLで
-  「カスタムコネクタを追加」し直す必要がある**（トラブルシューティング
-  履歴に追記済み）
+- OAuth接続・ダウンロード動作ともに解決済み。残っているのはGoogle Sheets
+  連携（`sheets.py`）の認証設定のみ
+- サーバー再起動時の注意点：
+  - コード変更を反映するにはサーバー（`python server.py`）の再起動が必要
+  - Tunnel（`cloudflared`）自体は再起動不要。`pkill -9 -f server.py`で
+    サーバーだけ落とし、同じ`PUBLIC_URL`で起動し直せばURLは変わらない
+  - ただしサーバー再起動でOAuthの状態（登録済みクライアント・トークン）は
+    インメモリなので消える。Claude側は多くの場合トークンの再取得を自動で
+    やってくれるが、うまくいかない場合はコネクタを削除して再登録が必要
 
 ### 次にやるべきこと
 
-1. Claudeのチャットで「ツールが使えるか確認して」と送り、
-   `download_and_record` / `list_downloaded_files` が実際に見えるか確認
-   （サーバーログ上は`ListToolsRequest`が200 OKで通っているので、
-   高い確率で見えているはず）
-2. 実際にギガファイル便のリンクを送って、ダウンロード→
-   `~/Dropbox/Movie Edit/R4/Active` への保存まで動くか確認
-3. まだつまずくようなら、サーバーのログ（`uvicorn`の出力）を確認する
-4. Google Sheets連携（`sheets.py`）はまだ未設定なので、ダウンロードが
-   安定したら着手する
+1. Google Sheets連携（`sheets.py`）の認証設定に着手する
+   - `.env`の`SPREADSHEET_ID`と`GOOGLE_CREDENTIALS_PATH`が未設定
+   - Google Cloud ConsoleでサービスアカウントJSONを取得し、対象の
+     スプレッドシートを共有する必要がある
+2. 運用に乗せる場合、Cloudflare quick tunnel（URLが毎回変わる）から
+   固定ドメインのNamed Tunnelへの移行を検討する
 
 ---
 
