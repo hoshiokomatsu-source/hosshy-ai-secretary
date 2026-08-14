@@ -13,7 +13,9 @@ Cloudflare Tunnel で外部公開する場合:
     そのURLを Claude.ai の コネクタ に登録する
 """
 
+import asyncio
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.fastmcp import FastMCP
@@ -64,39 +66,74 @@ else:
     mcp = FastMCP("hosshy-secretary", port=PORT, transport_security=_transport_security)
 
 
-@mcp.tool()
-async def download_and_record(gigafile_url: str) -> str:
-    """ギガファイル便のURLからファイルをダウンロードし、スプレッドシートに転記する。
+# Claude.ai/Desktop はツール実行を最大5分（300秒）待つと待たずに
+# タイムアウト扱いにする（公式ドキュメント記載）。大容量ファイルは
+# ダウンロードそのものに5分以上かかることがあるため、ツール呼び出しは
+# すぐ返し、実際のダウンロード〜シート転記はバックグラウンドで進める。
+_background_tasks: set[asyncio.Task] = set()
+_last_job_status: str = "まだダウンロードを実行していません。"
 
-    Args:
-        gigafile_url: ギガファイル便のURL（例: https://gigafile.nu/XXXXXXXX）
-    """
-    # 1. ダウンロード
+
+async def _run_download_and_record(gigafile_url: str) -> None:
+    global _last_job_status
+    started_at = datetime.now().strftime("%H:%M:%S")
     try:
         downloaded_files = await download_gigafile_url(gigafile_url, DOWNLOAD_DIR)
     except Exception as e:
-        return (
-            "❌ ダウンロード処理でエラーが発生しました。\n"
+        _last_job_status = (
+            f"❌ [{started_at}開始] ダウンロード処理でエラーが発生しました。\n"
             f"詳細: {type(e).__name__}: {e}\n"
             "URLの有効期限やギガファイル便側の混雑状況を確認し、もう一度試してください。"
         )
+        return
 
     if not downloaded_files:
-        return "ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"
+        _last_job_status = f"[{started_at}開始] ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"
+        return
 
     file_names = [f["name"] for f in downloaded_files]
-
-    # 2. スプレッドシート転記
     sheet_result = await write_files_to_sheet(downloaded_files)
 
-    lines = [f"✅ ダウンロード完了: {len(file_names)} ファイル"]
+    finished_at = datetime.now().strftime("%H:%M:%S")
+    lines = [f"✅ [{started_at}開始 → {finished_at}完了] ダウンロード完了: {len(file_names)} ファイル"]
     lines.append(f"📁 保存先: {DOWNLOAD_DIR}")
     lines.append("")
     lines.extend([f"  - {name}" for name in file_names])
     lines.append("")
     lines.append(f"📊 スプレッドシート: {sheet_result}")
+    _last_job_status = "\n".join(lines)
 
-    return "\n".join(lines)
+
+@mcp.tool()
+async def download_and_record(gigafile_url: str) -> str:
+    """ギガファイル便のURLからファイルをダウンロードし、スプレッドシートに転記する。
+
+    ダウンロードはバックグラウンドで実行され、この呼び出しはすぐに応答を返す
+    （大容量ファイルはダウンロードだけで5分以上かかることがあり、Claude側の
+    ツール実行タイムアウトに引っかかってしまうため）。完了したかどうかは
+    `check_download_status` または `list_downloaded_files` で確認できる。
+
+    Args:
+        gigafile_url: ギガファイル便のURL（例: https://gigafile.nu/XXXXXXXX）
+    """
+    global _last_job_status
+    _last_job_status = "⏳ ダウンロード実行中です..."
+    task = asyncio.create_task(_run_download_and_record(gigafile_url))
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
+
+    return (
+        "⏳ ダウンロードをバックグラウンドで開始しました。\n"
+        "大きいファイルの場合は完了まで数分かかることがあります。\n"
+        "少し時間をおいてから「ダウンロード状況を確認して」または"
+        "「ファイル一覧を確認して」と聞いてください。"
+    )
+
+
+@mcp.tool()
+async def check_download_status() -> str:
+    """直近のdownload_and_recordの進行状況・結果を確認する。"""
+    return _last_job_status
 
 
 @mcp.tool()
