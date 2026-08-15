@@ -160,3 +160,11 @@ R4 納品フォルダ/
 * 絵コンテ自動生成
 * タグ・メタデータ自動付与
 * サムネ案生成
+* **レシート自動記帳（freee会計連携）**：外出先でレシートの写真をClaudeに送るだけで、
+  freee会計に自動で仕訳登録される機能。ギガファイル便連携と同じMCPサーバー構成
+  （Claude.ai → Cloudflare Tunnel → Mac → 外部API）で実現可能。
+  - Claudeの画像認識でレシートの日付・金額・店名を解析
+  - freee API（`POST /receipts`でファイルボックスへアップロード、
+    または`POST /deals`で仕訳を直接登録）
+  - 要件：freee developersでのOAuthアプリ登録、事業所ID、勘定科目の判定ルール
+  - 詳細検討は着手時に別途
