@@ -58,16 +58,25 @@ async def write_files_to_sheet(files: list[dict]) -> str:
                 _short_date(today + timedelta(days=7)),
             ])
 
-        result = sheet.values().append(
+        existing = sheet.values().get(
             spreadsheetId=SPREADSHEET_ID,
-            range=f"'{tab_name}'!A1",
+            range=f"'{tab_name}'!A:F",
+        ).execute().get("values", [])
+        last = 1
+        for i, row in enumerate(existing, 1):
+            joined = "".join(str(c) for c in row)
+            if joined.strip() and "合計" not in joined:
+                last = i
+        start_row = last + 1
+
+        sheet.values().update(
+            spreadsheetId=SPREADSHEET_ID,
+            range=f"'{tab_name}'!A{start_row}",
             valueInputOption="USER_ENTERED",
-            insertDataOption="INSERT_ROWS",
             body={"values": rows},
         ).execute()
 
-        updated = result.get("updates", {}).get("updatedRows", len(rows))
-        return f"{tab_name} に {updated} 行を追記しました"
+        return f"{tab_name} の {start_row} 行目から {len(rows)} 行を追記しました"
 
     except Exception as e:
         return f"❌ スプレッドシート書き込みエラー: {e}"
