@@ -16,18 +16,24 @@ cleanup() {
 }
 trap cleanup EXIT
 
-: > "$TUNNEL_LOG"
-cloudflared tunnel --url http://localhost:8000 >> "$TUNNEL_LOG" 2>&1 &
-TUNNEL_PID=$!
-
 PUBLIC_URL=""
-for _ in $(seq 1 40); do
-  PUBLIC_URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$TUNNEL_LOG" | head -1 || true)
-  if [[ -n "$PUBLIC_URL" ]]; then
-    break
-  fi
-  sleep 1
-done
+if pgrep -f "cloudflared tunnel --url http://localhost:8000" >/dev/null && [[ -f "$URL_FILE" ]]; then
+  PUBLIC_URL=$(cat "$URL_FILE")
+fi
+
+if [[ -z "$PUBLIC_URL" ]]; then
+  : > "$TUNNEL_LOG"
+  cloudflared tunnel --url http://localhost:8000 >> "$TUNNEL_LOG" 2>&1 &
+  TUNNEL_PID=$!
+
+  for _ in $(seq 1 40); do
+    PUBLIC_URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "$TUNNEL_LOG" | head -1 || true)
+    if [[ -n "$PUBLIC_URL" ]]; then
+      break
+    fi
+    sleep 1
+  done
+fi
 
 if [[ -z "$PUBLIC_URL" ]]; then
   echo "Tunnel URL の取得に失敗しました。$TUNNEL_LOG を確認してください。" >&2

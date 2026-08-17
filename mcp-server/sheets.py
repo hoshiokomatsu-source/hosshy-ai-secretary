@@ -8,6 +8,7 @@
 """
 
 import os
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -17,21 +18,13 @@ CREDENTIALS_PATH = os.getenv(
     os.path.expanduser("~/.config/hosshy/credentials.json")
 )
 
-# 書き込む先のシート名と開始列
-SHEET_NAME = "シート1"
-# カラム順: 月 | フォルダ名 | タイトル | 内容 | 発注日 | 納品日
-COLUMNS = ["月", "フォルダ名", "タイトル", "内容", "発注日", "納品日"]
+# 実シートのタブは「2026/8」形式。列は既存パートナーシートに合わせる。
+# A:月  B:フォルダ名  C:タイトル  D:内容  E:発注日  F:納品日
+HEADER_ROW = ["", "　撮影日※敬称略", "タイトル", "内容", "発注日", "納品日", "単価/分", "分", "進捗", "小計", "備考"]
 
 
 async def write_files_to_sheet(files: list[dict]) -> str:
-    """ダウンロードしたファイル情報をスプレッドシートに転記する。
-
-    Args:
-        files: downloader.py が返すファイル情報のリスト
-
-    Returns:
-        結果メッセージ
-    """
+    """ダウンロードしたファイル情報をスプレッドシートに転記する。"""
     if not SPREADSHEET_ID:
         return "⚠️ SPREADSHEET_ID が未設定のためスキップしました（.env を確認）"
 
@@ -50,35 +43,62 @@ async def write_files_to_sheet(files: list[dict]) -> str:
         sheet = service.spreadsheets()
 
         today = datetime.now()
+        tab_name = _month_tab_name(today)
+        _ensure_month_tab(sheet, tab_name)
+
         rows = []
         for f in files:
-            order_date = today.strftime("%Y/%m/%d")
-            delivery_date = (today + timedelta(days=7)).strftime("%Y/%m/%d")
             folder_name = _extract_folder_name(f["name"], today)
-
             rows.append([
-                today.strftime("%Y/%m"),   # 月
-                folder_name,               # フォルダ名
-                f["stem"],                 # タイトル
-                "動画編集",               # 内容（固定）
-                order_date,               # 発注日
-                delivery_date,            # 納品日
+                f"{today.month}月",
+                folder_name,
+                f["stem"],
+                "動画編集",
+                _short_date(today),
+                _short_date(today + timedelta(days=7)),
             ])
 
-        body = {"values": rows}
         result = sheet.values().append(
             spreadsheetId=SPREADSHEET_ID,
-            range=f"{SHEET_NAME}!A1",
+            range=f"'{tab_name}'!A1",
             valueInputOption="USER_ENTERED",
             insertDataOption="INSERT_ROWS",
-            body=body,
+            body={"values": rows},
         ).execute()
 
         updated = result.get("updates", {}).get("updatedRows", len(rows))
-        return f"{updated} 行を追記しました"
+        return f"{tab_name} に {updated} 行を追記しました"
 
     except Exception as e:
         return f"❌ スプレッドシート書き込みエラー: {e}"
+
+
+def _month_tab_name(date: datetime) -> str:
+    """既存シートに合わせ、先頭ゼロなしの『2026/8』形式にする。"""
+    return f"{date.year}/{date.month}"
+
+
+def _short_date(date: datetime) -> str:
+    """既存シートに合わせ『8/18』形式にする。"""
+    return f"{date.month}/{date.day}"
+
+
+def _ensure_month_tab(sheet, tab_name: str) -> None:
+    meta = sheet.get(spreadsheetId=SPREADSHEET_ID).execute()
+    existing = {s["properties"]["title"] for s in meta.get("sheets", [])}
+    if tab_name in existing:
+        return
+
+    sheet.batchUpdate(
+        spreadsheetId=SPREADSHEET_ID,
+        body={"requests": [{"addSheet": {"properties": {"title": tab_name}}}]},
+    ).execute()
+    sheet.values().update(
+        spreadsheetId=SPREADSHEET_ID,
+        range=f"'{tab_name}'!A1",
+        valueInputOption="USER_ENTERED",
+        body={"values": [HEADER_ROW]},
+    ).execute()
 
 
 def _extract_folder_name(filename: str, date: datetime) -> str:
@@ -88,8 +108,6 @@ def _extract_folder_name(filename: str, date: datetime) -> str:
         "36-1ド.mp4" → "ホシオ0814"（日付フォールバック）
     """
     stem = Path(filename).stem
-    # 先頭の日本語＋数字パターンを抽出（例: ホシオ0808）
-    import re
     match = re.match(r"^([\u3040-\u30ff\u4e00-\u9fff\uff66-\uff9fA-Za-z]+\d{4})", stem)
     if match:
         return match.group(1)
