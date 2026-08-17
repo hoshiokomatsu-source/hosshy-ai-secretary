@@ -87,12 +87,15 @@ async def _run_download_and_record(gigafile_url: str) -> None:
         )
         return
 
+    print(f"[hossy] ダウンロード結果: {len(downloaded_files)} 件 {[f.get('name') for f in downloaded_files]}")
     if not downloaded_files:
         _last_job_status = f"[{started_at}開始] ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"
+        print("[hossy] ファイル0件のためシート転記をスキップしました")
         return
 
     file_names = [f["name"] for f in downloaded_files]
     sheet_result = await write_files_to_sheet(downloaded_files)
+    print(f"[hossy] シート転記: {sheet_result}")
 
     finished_at = datetime.now().strftime("%H:%M:%S")
     lines = [f"✅ [{started_at}開始 → {finished_at}完了] ダウンロード完了: {len(file_names)} ファイル"]

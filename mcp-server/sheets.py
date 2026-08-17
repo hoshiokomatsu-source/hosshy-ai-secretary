@@ -12,11 +12,15 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-SPREADSHEET_ID = os.getenv("SPREADSHEET_ID", "")
-CREDENTIALS_PATH = os.getenv(
-    "GOOGLE_CREDENTIALS_PATH",
-    os.path.expanduser("~/.config/hosshy/credentials.json")
-)
+def _spreadsheet_id() -> str:
+    return os.getenv("SPREADSHEET_ID", "")
+
+
+def _credentials_path() -> str:
+    return os.getenv(
+        "GOOGLE_CREDENTIALS_PATH",
+        os.path.expanduser("~/.config/hosshy/credentials.json"),
+    )
 
 # 実シートのタブは「2026/8」形式。列は既存パートナーシートに合わせる。
 # A:月  B:フォルダ名  C:タイトル  D:内容  E:発注日  F:納品日
@@ -25,18 +29,21 @@ HEADER_ROW = ["", "　撮影日※敬称略", "タイトル", "内容", "発注�
 
 async def write_files_to_sheet(files: list[dict]) -> str:
     """ダウンロードしたファイル情報をスプレッドシートに転記する。"""
-    if not SPREADSHEET_ID:
+    spreadsheet_id = _spreadsheet_id()
+    credentials_path = _credentials_path()
+
+    if not spreadsheet_id:
         return "⚠️ SPREADSHEET_ID が未設定のためスキップしました（.env を確認）"
 
-    if not Path(CREDENTIALS_PATH).exists():
-        return f"⚠️ credentials.json が見つかりません: {CREDENTIALS_PATH}"
+    if not Path(credentials_path).exists():
+        return f"⚠️ credentials.json が見つかりません: {credentials_path}"
 
     try:
         from googleapiclient.discovery import build
         from google.oauth2 import service_account
 
         creds = service_account.Credentials.from_service_account_file(
-            CREDENTIALS_PATH,
+            credentials_path,
             scopes=["https://www.googleapis.com/auth/spreadsheets"],
         )
         service = build("sheets", "v4", credentials=creds)
@@ -44,7 +51,7 @@ async def write_files_to_sheet(files: list[dict]) -> str:
 
         today = datetime.now()
         tab_name = _month_tab_name(today)
-        _ensure_month_tab(sheet, tab_name)
+        _ensure_month_tab(sheet, spreadsheet_id, tab_name)
 
         rows = []
         for f in files:
@@ -59,7 +66,7 @@ async def write_files_to_sheet(files: list[dict]) -> str:
             ])
 
         existing = sheet.values().get(
-            spreadsheetId=SPREADSHEET_ID,
+            spreadsheetId=spreadsheet_id,
             range=f"'{tab_name}'!A:F",
         ).execute().get("values", [])
         last = 1
@@ -70,7 +77,7 @@ async def write_files_to_sheet(files: list[dict]) -> str:
         start_row = last + 1
 
         sheet.values().update(
-            spreadsheetId=SPREADSHEET_ID,
+            spreadsheetId=spreadsheet_id,
             range=f"'{tab_name}'!A{start_row}",
             valueInputOption="USER_ENTERED",
             body={"values": rows},
@@ -92,18 +99,18 @@ def _short_date(date: datetime) -> str:
     return f"{date.month}/{date.day}"
 
 
-def _ensure_month_tab(sheet, tab_name: str) -> None:
-    meta = sheet.get(spreadsheetId=SPREADSHEET_ID).execute()
+def _ensure_month_tab(sheet, spreadsheet_id: str, tab_name: str) -> None:
+    meta = sheet.get(spreadsheetId=spreadsheet_id).execute()
     existing = {s["properties"]["title"] for s in meta.get("sheets", [])}
     if tab_name in existing:
         return
 
     sheet.batchUpdate(
-        spreadsheetId=SPREADSHEET_ID,
+        spreadsheetId=spreadsheet_id,
         body={"requests": [{"addSheet": {"properties": {"title": tab_name}}}]},
     ).execute()
     sheet.values().update(
-        spreadsheetId=SPREADSHEET_ID,
+        spreadsheetId=spreadsheet_id,
         range=f"'{tab_name}'!A1",
         valueInputOption="USER_ENTERED",
         body={"values": [HEADER_ROW]},

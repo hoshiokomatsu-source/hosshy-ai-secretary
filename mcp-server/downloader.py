@@ -21,6 +21,8 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
         [{"name": "ファイル名", "path": "保存先フルパス", "size": バイト数}, ...]
     """
     os.makedirs(download_dir, exist_ok=True)
+    before = {name: os.path.getmtime(os.path.join(download_dir, name))
+              for name in os.listdir(download_dir) if not name.startswith(".")}
 
     downloaded = []
 
@@ -72,7 +74,31 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
 
         await browser.close()
 
+    if not downloaded:
+        downloaded = _files_added_since(download_dir, before)
+        if downloaded:
+            print(f"[downloader] ボタン処理は失敗したが、新規ファイルを {len(downloaded)} 件検出したので転記対象にする")
+
     return downloaded
+
+
+def _files_added_since(download_dir: str, before: dict) -> list[dict]:
+    found = []
+    for name in os.listdir(download_dir):
+        if name.startswith("."):
+            continue
+        path = os.path.join(download_dir, name)
+        if not os.path.isfile(path):
+            continue
+        mtime = os.path.getmtime(path)
+        if name not in before or mtime > before[name]:
+            found.append({
+                "name": name,
+                "path": path,
+                "size": os.path.getsize(path),
+                "stem": _extract_stem(name),
+            })
+    return found
 
 
 def _extract_stem(filename: str) -> str:
