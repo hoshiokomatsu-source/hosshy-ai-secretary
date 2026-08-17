@@ -5,12 +5,34 @@ MacBook Airを再起動・アップデートした後、ホッシーくんを再
 
 対象読者：ホシさん本人（ターミナルで手を動かす人）
 
+常時起動は `launchd`（`com.hossy.secretary`）に載せてある。
+ログインすれば自動で Tunnel + サーバー + caffeinate が立ち上がる。
+Cursorのチャットを閉じても落ちない。
+
 ---
 
 ## 前提
 
 - 作業場所は `~/hosshy`（`~/src/hossy`ではない。コード編集用と実行用でディレクトリが分かれている）
 - ターミナルを2つ開く（① Tunnel用、② サーバー用）
+
+---
+
+## 0. いま動いているか確認する（先にこれ）
+
+```bash
+cat /tmp/hossy_public_url.txt
+launchctl print "gui/$(id -u)/com.hossy.secretary" | head -20
+```
+
+URLが出て `state = running` なら、サーバーは生きている。あとは Claude.ai のコネクタを
+そのURL（末尾 `/mcp`）で登録し直すだけ。
+
+止まっているときだけ、下の手動手順か次の再起動コマンドを使う。
+
+```bash
+launchctl kickstart -k "gui/$(id -u)/com.hossy.secretary"
+```
 
 ---
 
