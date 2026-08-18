@@ -4,22 +4,33 @@ from __future__ import annotations
 
 import json
 import os
+import random
 from datetime import datetime
 
 STATUS_PATH = "/tmp/hossy_status.json"
+WORK_POSES = ("laptop", "desk")
 
 IDLE = {
     "state": "idle",
     "line": "zzz…",
     "detail": "",
+    "pose": "laptop",
 }
 
 
 def set_status(state: str, line: str, detail: str = "") -> None:
+    prev = read_status()
+    if state == "working":
+        pose = prev.get("pose") if prev.get("state") == "working" else random.choice(WORK_POSES)
+        if pose not in WORK_POSES:
+            pose = "laptop"
+    else:
+        pose = prev.get("pose") if prev.get("pose") in WORK_POSES else "laptop"
     payload = {
         "state": state,
         "line": line,
         "detail": detail,
+        "pose": pose,
         "updated_at": datetime.now().strftime("%H:%M:%S"),
     }
     tmp = STATUS_PATH + ".tmp"
