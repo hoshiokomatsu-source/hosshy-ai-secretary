@@ -174,10 +174,13 @@ def _extract_stem(filename: str) -> str:
 
     例: "32-1ド.mp4" → "32-1"
         "ホシオ0808_36-2.mp4" → "36-2"
+        "AUDI3-1.mp4" → "AUDI3-1"（数字-数字が名前の途中ならそのまま）
     """
     stem = Path(filename).stem
-    # 先頭の「数字-数字」パターンを優先抽出
-    match = re.search(r"\d+-\d+", stem)
-    if match:
-        return match.group()
+    leading = re.match(r"^(\d+-\d+)", stem)
+    if leading:
+        return leading.group(1)
+    trailing = re.search(r"_(\d+-\d+)", stem)
+    if trailing:
+        return trailing.group(1)
     return stem
