@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ホッシーくん</title>
+<style>
+  :root {
+    --bg: #0e0f10;
+    --text: #e8eaec;
+    --muted: #9ca3af;
+    --accent: #4f93e8;
+    --green: #34d399;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Hiragino Sans", "Meiryo", system-ui, sans-serif; overflow: hidden; }
+  .stage { min-height: 100%; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 28px; padding: 40px 24px 80px; }
+  .char-wrap { position: relative; width: min(52vh, 420px); height: min(52vh, 420px); }
+  .char { width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 80%; }
+  .spark { position: absolute; color: #fbbf24; font-size: 28px; opacity: 0; pointer-events: none; }
+  .spark.l { left: -8%; top: 12%; }
+  .spark.r { right: -8%; top: 18%; }
+
+  .idle .char { animation: sleep 3.6s ease-in-out infinite; filter: brightness(.72) saturate(.85); }
+  .wake .char { animation: pop .7s cubic-bezier(.2,1.4,.3,1) both; filter: brightness(1.08); }
+  .wake .spark { animation: sparkle .7s ease both; }
+  .working .char { animation: work .7s ease-in-out infinite; }
+  .done .char { animation: win .55s cubic-bezier(.2,1.6,.3,1) both; filter: brightness(1.12); }
+  .done .spark { animation: sparkle .8s ease infinite; }
+
+  @keyframes sleep { 0%,100% { transform: translateY(10px) rotate(-4deg); } 50% { transform: translateY(0) rotate(3deg); } }
+  @keyframes pop { 0% { transform: scale(.7) translateY(30px); } 100% { transform: scale(1.08) translateY(0); } }
+  @keyframes work { 0%,100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-14px) rotate(6deg); } }
+  @keyframes win { 0% { transform: scale(.9); } 60% { transform: scale(1.18); } 100% { transform: scale(1.05); } }
+  @keyframes sparkle { 0% { opacity: 0; transform: scale(.4); } 40% { opacity: 1; transform: scale(1.2); } 100% { opacity: 0; } }
+
+  .caption { width: min(720px, 92vw); background: #161718; border: 3px solid #2a2d30;
+    border-radius: 14px; padding: 18px 22px 16px; box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+  .who { font-size: 12px; letter-spacing: .12em; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+  .line { font-size: 22px; font-weight: 700; line-height: 1.45; min-height: 2.8em; }
+  .detail { margin-top: 8px; font-size: 12px; color: var(--muted); white-space: pre-wrap; max-height: 4.8em; overflow: hidden; }
+
+  .row { display: flex; gap: 10px; width: min(720px, 92vw); }
+  input[type=url] { flex: 1; background: #1e2022; border: 1px solid #2a2d30; color: var(--text);
+    border-radius: 10px; padding: 12px 14px; font-size: 15px; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+    padding: 12px 18px; font-weight: 700; cursor: pointer; font-size: 15px; }
+  button.ghost { background: transparent; border: 1px solid #2a2d30; color: var(--muted); }
+  .hint { font-size: 12px; color: var(--muted); }
+  .mic { position: fixed; top: 16px; right: 18px; font-size: 12px; color: var(--green); }
+</style>
+</head>
+<body>
+<div class="stage idle" id="stage">
+  <div class="char-wrap">
+    <span class="spark l">✦</span>
+    <img class="char" src="/hosshy.png" alt="ホッシーくん" />
+    <span class="spark r">✦</span>
+  </div>
+  <div class="caption">
+    <div class="who">HOSSY</div>
+    <div class="line" id="line">zzz… ホッシーくん！って呼んでくれたら起きるよ</div>
+    <div class="detail" id="detail"></div>
+  </div>
+  <div class="row" id="form" hidden>
+    <input id="url" type="url" placeholder="https://gigafile.nu/........" />
+    <button id="go" type="button">お願い！</button>
+  </div>
+  <button class="ghost" id="mic" type="button">マイクで「ホッシーくん！」と呼ぶ</button>
+  <div class="hint">外出先は今まで通り Claude にリンクを送ってね</div>
+</div>
+<div class="mic" id="micState"></div>
+<script>
+const stage = document.getElementById("stage");
+const lineEl = document.getElementById("line");
+const detailEl = document.getElementById("detail");
+const form = document.getElementById("form");
+const urlEl = document.getElementById("url");
+const WAKE = /ホッシー|ほっしー|星くん|ほしーくん|欲張り/;
+
+function apply(data) {
+  const state = data.state || "idle";
+  stage.className = "stage " + state;
+  lineEl.textContent = data.line || "";
+  detailEl.textContent = data.detail || "";
+  form.hidden = !(state === "wake" || state === "idle");
+}
+
+async function poll() {
+  try {
+    const r = await fetch("/api/status", { cache: "no-store" });
+    apply(await r.json());
+  } catch (e) {}
+}
+
+async function wake() {
+  await fetch("/api/wake", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+  form.hidden = false;
+  urlEl.focus();
+  poll();
+}
+
+document.getElementById("go").onclick = async () => {
+  const url = urlEl.value.trim();
+  if (!url) return;
+  await fetch("/api/download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url }),
+  });
+  urlEl.value = "";
+  poll();
+};
+
+function startMic() {
+  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Rec) {
+    document.getElementById("micState").textContent = "このブラウザは音声に未対応";
+    return;
+  }
+  const rec = new Rec();
+  rec.lang = "ja-JP";
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.onresult = (ev) => {
+    const t = ev.results[ev.results.length - 1][0].transcript;
+    document.getElementById("micState").textContent = "🎙 " + t;
+    if (WAKE.test(t)) wake();
+  };
+  rec.onend = () => rec.start();
+  rec.start();
+  document.getElementById("micState").textContent = "🎙 聞いてるよ";
+}
+
+document.getElementById("mic").onclick = startMic;
+setInterval(poll, 1000);
+poll();
+</script>
+</body>
+</html>

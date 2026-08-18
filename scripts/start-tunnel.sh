@@ -1,9 +1,17 @@
 #!/bin/bash
 # Cloudflare Tunnel だけを起動する。サーバー再起動では殺さない。
+# ~/.cloudflared/hossy.yml があれば固定ドメイン、なければ Quick Tunnel。
 set -euo pipefail
 
 TUNNEL_LOG="/tmp/hossy_tunnel.log"
 URL_FILE="/tmp/hossy_public_url.txt"
+NAMED_CONFIG="${HOME}/.cloudflared/hossy.yml"
+
+if [[ -f "$NAMED_CONFIG" ]]; then
+  echo "https://hossy.komatour.com" > "$URL_FILE"
+  echo "Named Tunnel: https://hossy.komatour.com"
+  exec cloudflared tunnel --config "$NAMED_CONFIG" run
+fi
 
 if pgrep -f "cloudflared tunnel --url http://localhost:8000" >/dev/null; then
   echo "Tunnel already running"

@@ -15,22 +15,20 @@ Cloudflare Tunnel で外部公開する場合:
 
 import asyncio
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions, RevocationOptions
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
-from downloader import download_gigafile_url
 from oauth_provider import SingleUserOAuthProvider
+import pipeline
 from premiere import (
-    folder_from_downloaded_files,
     premiere_is_running,
     prepare_premiere_project,
     read_premiere_result,
     resolve_media_folder,
 )
-from sheets import write_files_to_sheet
+from status import set_status
 
 load_dotenv()
 
@@ -78,50 +76,10 @@ else:
 # ダウンロードそのものに5分以上かかることがあるため、ツール呼び出しは
 # すぐ返し、実際のダウンロード〜シート転記はバックグラウンドで進める。
 _background_tasks: set[asyncio.Task] = set()
-_last_job_status: str = "まだダウンロードを実行していません。"
 
 
 async def _run_download_and_record(gigafile_url: str) -> None:
-    global _last_job_status
-    started_at = datetime.now().strftime("%H:%M:%S")
-    try:
-        downloaded_files = await download_gigafile_url(gigafile_url, DOWNLOAD_DIR)
-    except Exception as e:
-        _last_job_status = (
-            f"❌ [{started_at}開始] ダウンロード処理でエラーが発生しました。\n"
-            f"詳細: {type(e).__name__}: {e}\n"
-            "URLの有効期限やギガファイル便側の混雑状況を確認し、もう一度試してください。"
-        )
-        return
-
-    print(f"[hossy] ダウンロード結果: {len(downloaded_files)} 件 {[f.get('name') for f in downloaded_files]}")
-    if not downloaded_files:
-        _last_job_status = f"[{started_at}開始] ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"
-        print("[hossy] ファイル0件のためシート転記をスキップしました")
-        return
-
-    file_names = [f["name"] for f in downloaded_files]
-    sheet_result = await write_files_to_sheet(downloaded_files)
-    print(f"[hossy] シート転記: {sheet_result}")
-
-    finished_at = datetime.now().strftime("%H:%M:%S")
-    lines = [f"✅ [{started_at}開始 → {finished_at}完了] ダウンロード完了: {len(file_names)} ファイル"]
-    lines.append(f"📁 保存先: {DOWNLOAD_DIR}")
-    lines.append("")
-    lines.extend([f"  - {name}" for name in file_names])
-    lines.append("")
-    lines.append(f"📊 スプレッドシート: {sheet_result}")
-
-    premiere_folder = folder_from_downloaded_files(downloaded_files, DOWNLOAD_DIR)
-    if premiere_folder:
-        try:
-            premiere = prepare_premiere_project(premiere_folder)
-            lines.append("")
-            lines.append(f"🎬 Premiere: {premiere['message']}")
-        except Exception as e:
-            lines.append("")
-            lines.append(f"🎬 Premiere: 自動セットアップに失敗しました（{type(e).__name__}: {e}）")
-    _last_job_status = "\n".join(lines)
+    await pipeline.run_download_pipeline(gigafile_url)
 
 
 @mcp.tool()
@@ -136,8 +94,8 @@ async def download_and_record(gigafile_url: str) -> str:
     Args:
         gigafile_url: ギガファイル便のURL（例: https://gigafile.nu/XXXXXXXX）
     """
-    global _last_job_status
-    _last_job_status = "⏳ ダウンロード実行中です..."
+    pipeline.last_job_status = "⏳ ダウンロード実行中です..."
+    set_status("working", "ダウンロードしてるよ…ちょっと待ってて！", gigafile_url)
     task = asyncio.create_task(_run_download_and_record(gigafile_url))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
@@ -153,7 +111,7 @@ async def download_and_record(gigafile_url: str) -> str:
 @mcp.tool()
 async def check_download_status() -> str:
     """直近のdownload_and_recordの進行状況・結果を確認する。"""
-    return _last_job_status
+    return pipeline.last_job_status
 
 
 @mcp.tool()
@@ -184,8 +142,10 @@ async def prepare_premiere(folder_path: str = "") -> str:
     """
     try:
         folder = resolve_media_folder(folder_path or None, DOWNLOAD_DIR)
+        set_status("working", "Premiere でシーケンス作ってるよ…", folder)
         result = prepare_premiere_project(folder)
     except Exception as e:
+        set_status("idle", "Premiere がうまくいかなかった…", str(e))
         return f"❌ Premiere セットアップを開始できませんでした。\n詳細: {type(e).__name__}: {e}"
 
     lines = [
