@@ -39,6 +39,10 @@ Claudeアプリ（外出）┘                                          ─▶ �
 
 [https://hosshy-ai-secretary.surge.sh](https://hosshy-ai-secretary.surge.sh)
 
+## 進捗レポート
+
+[https://hosshy-progress.surge.sh](https://hosshy-progress.surge.sh)
+
 ## ディレクトリ構成
 
 ```
@@ -49,6 +53,8 @@ Claudeアプリ（外出）┘                                          ─▶ �
 └── surge-deploy/
     ├── index.html        # プレゼン用Webページ
     └── hosshy.png        # ホッシーくんキャラクター素材
+└── surge-deploy-progress/
+    └── index.html        # 開発進捗レポート
 ```
 
 ---

@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ホッシーくん 開発進捗レポート — 2026.08.18</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f10;
+    --bg2: #161718;
+    --bg3: #1e2022;
+    --border: #2a2d30;
+    --text: #e8eaec;
+    --text2: #9ca3af;
+    --text3: #6b7280;
+    --accent: #4f93e8;
+    --accent2: #2d6bc4;
+    --green: #34d399;
+    --yellow: #fbbf24;
+    --red: #f87171;
+    --font: "Hiragino Sans", "Meiryo", system-ui, sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; }
+
+  /* ── Hero ── */
+  .hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 48px 40px 36px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    flex-wrap: wrap;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent, transparent 39px, var(--border) 39px, var(--border) 40px
+    );
+    opacity: 0.25;
+    pointer-events: none;
+  }
+  .hero-text { position: relative; z-index: 1; }
+  .hero-tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(79,147,232,.12);
+    border: 1px solid rgba(79,147,232,.3);
+    border-radius: 4px;
+    padding: 2px 10px;
+    margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 28px; font-weight: 700; line-height: 1.4; margin-bottom: 8px; }
+  .hero h1 span { color: var(--accent); }
+  .hero-sub { font-size: 14px; color: var(--text2); max-width: 520px; }
+  .hero-date { font-size: 12px; color: var(--text3); margin-top: 10px; }
+
+  /* ── Section shell ── */
+  section { padding: 40px; border-bottom: 1px solid var(--border); }
+  .section-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 24px; }
+  .section-num {
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    border: 1px solid rgba(79,147,232,.35); border-radius: 4px;
+    padding: 2px 8px; letter-spacing: .04em;
+  }
+  .section-title { font-size: 19px; font-weight: 700; }
+  .section-desc { font-size: 12.5px; color: var(--text3); margin-top: 4px; }
+
+  /* ── Overall progress ── */
+  .overall {
+    display: flex; align-items: center; gap: 48px; flex-wrap: wrap;
+  }
+  .ring-wrap { position: relative; width: 220px; height: 220px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: var(--bg3); stroke-width: 14; }
+  .ring-fg { fill: none; stroke: url(#ringGrad); stroke-width: 14; stroke-linecap: round;
+    stroke-dasharray: 597; stroke-dashoffset: 597; transition: stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1); }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; }
+  .ring-pct { font-size: 44px; font-weight: 800; letter-spacing: -.02em; }
+  .ring-label { font-size: 11px; color: var(--text3); margin-top: 2px; letter-spacing: .04em; }
+
+  .overall-legend { flex: 1; min-width: 280px; }
+  .legend-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: 13px; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .legend-name { color: var(--text2); flex: 1; }
+  .legend-weight { color: var(--text3); font-size: 11.5px; }
+  .legend-val { font-weight: 700; width: 40px; text-align: right; }
+  .legend-note {
+    margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--border);
+    font-size: 12px; color: var(--text3); line-height: 1.7;
+  }
+
+  /* ── Pipeline steps ── */
+  .pipeline { display: flex; flex-wrap: wrap; gap: 10px; }
+  .step {
+    flex: 1 1 150px; min-width: 150px;
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 14px 12px; position: relative;
+  }
+  .step.done { border-color: rgba(52,211,153,.35); background: linear-gradient(180deg, rgba(52,211,153,.07), transparent); }
+  .step.partial { border-color: rgba(251,191,36,.35); background: linear-gradient(180deg, rgba(251,191,36,.07), transparent); }
+  .step.todo { opacity: .55; }
+  .step-idx { font-size: 11px; color: var(--text3); font-weight: 700; }
+  .step-title { font-size: 12.5px; font-weight: 600; margin-top: 6px; line-height: 1.5; min-height: 38px; }
+  .step-badge {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; font-weight: 700;
+    margin-top: 10px; padding: 2px 8px; border-radius: 20px;
+  }
+  .step.done .step-badge { color: var(--green); background: rgba(52,211,153,.12); }
+  .step.partial .step-badge { color: var(--yellow); background: rgba(251,191,36,.12); }
+  .step.todo .step-badge { color: var(--text3); background: rgba(255,255,255,.05); }
+  .step-arrow { display: flex; align-items: center; color: var(--text3); font-size: 16px; padding: 0 2px; }
+
+  /* ── Component bars ── */
+  .bars { display: flex; flex-direction: column; gap: 16px; }
+  .bar-row { display: grid; grid-template-columns: 200px 1fr 48px; align-items: center; gap: 16px; }
+  .bar-name { font-size: 13px; font-weight: 600; }
+  .bar-sub { font-size: 11px; color: var(--text3); font-weight: 400; margin-top: 2px; }
+  .bar-track { height: 10px; background: var(--bg3); border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 6px; width: 0; transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+  .bar-pct { font-size: 13px; font-weight: 700; text-align: right; }
+
+  /* ── Architecture diagram ── */
+  .arch { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; justify-content: center; }
+  .arch-node {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; min-width: 150px; text-align: center; display: flex; flex-direction: column;
+    justify-content: center; gap: 4px;
+  }
+  .arch-node.live { border-color: rgba(52,211,153,.4); }
+  .arch-node.pending { border-color: rgba(107,114,128,.4); opacity: .6; border-style: dashed; }
+  .arch-node .n-title { font-size: 13px; font-weight: 700; }
+  .arch-node .n-sub { font-size: 10.5px; color: var(--text3); }
+  .arch-flow { display: flex; align-items: center; }
+  .arch-flow-v { display: flex; justify-content: center; }
+  .arch-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .arch-arrow { color: var(--accent); font-size: 20px; padding: 0 10px; }
+  .arch-arrow-down { color: var(--accent); font-size: 20px; }
+  .arch-label { font-size: 10px; color: var(--text3); }
+
+  /* ── Timeline ── */
+  .timeline { display: flex; flex-direction: column; gap: 0; }
+  .t-item { display: grid; grid-template-columns: 90px 20px 1fr; gap: 4px; }
+  .t-time { font-size: 11.5px; color: var(--text3); padding-top: 2px; }
+  .t-line-wrap { display: flex; flex-direction: column; align-items: center; }
+  .t-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); margin-top: 4px; flex-shrink: 0; }
+  .t-line { width: 1px; flex: 1; background: var(--border); margin-top: 2px; }
+  .t-body { padding-bottom: 24px; }
+  .t-title { font-size: 13.5px; font-weight: 700; }
+  .t-cause { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .t-fix { font-size: 12px; color: var(--text3); margin-top: 3px; }
+  .t-fix b { color: var(--accent); font-weight: 600; }
+
+  /* ── Next steps ── */
+  .next-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px,1fr)); gap: 14px; }
+  .next-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+  }
+  .next-card .n-pri { font-size: 10px; font-weight: 700; letter-spacing: .05em; }
+  .next-card.p1 .n-pri { color: var(--yellow); }
+  .next-card.p2 .n-pri { color: var(--accent); }
+  .next-card.p3 .n-pri { color: var(--text3); }
+  .next-card .n-title { font-size: 13.5px; font-weight: 700; margin-top: 8px; }
+  .next-card .n-desc { font-size: 12px; color: var(--text3); margin-top: 6px; line-height: 1.6; }
+
+  footer { padding: 28px 40px; text-align: center; color: var(--text3); font-size: 11.5px; }
+  footer a { color: var(--accent); text-decoration: none; }
+
+  @media (max-width: 640px) {
+    .hero { padding: 32px 20px; }
+    section { padding: 28px 20px; }
+    .bar-row { grid-template-columns: 1fr; gap: 6px; }
+    .bar-pct { text-align: left; }
+    .overall { gap: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-text">
+      <div class="hero-tag">Progress Report</div>
+      <h1>AI秘書「ホッシー<span>くん</span>」 開発進捗レポート</h1>
+      <div class="hero-sub">ギガファイル便のリンクを送るだけで動画DL〜編集準備までを自動化するプロジェクト。現在の実装状況と技術的な到達点をまとめた。</div>
+      <div class="hero-date">更新日: 2026年8月18日（初版: 2026年8月14日）</div>
+    </div>
+  </div>
+
+  <!-- 1. 全体進捗 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <div>
+        <div class="section-title">全体進捗</div>
+        <div class="section-desc">要件定義書（フェーズ1）の全機能を100%として、コンポーネントの重要度で加重平均した進捗率</div>
+      </div>
+    </div>
+    <div class="overall">
+      <div class="ring-wrap">
+        <svg width="220" height="220" viewBox="0 0 220 220">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4f93e8" />
+              <stop offset="100%" stop-color="#34d399" />
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="110" cy="110" r="95" />
+          <circle class="ring-fg" id="ringFg" cx="110" cy="110" r="95" />
+        </svg>
+        <div class="ring-center">
+          <div class="ring-pct" id="ringPct">0%</div>
+          <div class="ring-label">COMPLETE</div>
+        </div>
+      </div>
+      <div class="overall-legend">
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">Claude連携基盤（OAuth / MCP / Tunnel）</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">自動ダウンロード（ギガファイル便）</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">ファイル名解析・整理</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">スプレッドシート自動転記</span><span class="legend-weight">重み15%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#6b7280"></span><span class="legend-name">Premiere Pro自動化</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#6b7280">0%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#6b7280"></span><span class="legend-name">キャラクターUI（React）</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#6b7280">0%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#6b7280"></span><span class="legend-name">音声起動（ウェイクワード）</span><span class="legend-weight">重み5%</span><span class="legend-val" style="color:#6b7280">0%</span></div>
+        <div class="legend-note">スマホのClaudeからギガファイル便リンクを送ると、Macがダウンロード→ZIP解凍→名前付きフォルダへ整理→テスト用シートへ転記するまで実運用確認済み（8/18）。残りはPremiere自動化・専用UI・音声起動。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. パイプライン進捗 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <div>
+        <div class="section-title">処理フロー（要件定義書 フェーズ1）の到達状況</div>
+        <div class="section-desc">①〜⑪の11ステップのうち、⑦までが動作確認済み</div>
+      </div>
+    </div>
+    <div class="pipeline">
+      <div class="step partial"><div class="step-idx">① </div><div class="step-title">メッセージ受信（音声 / テキスト）</div><div class="step-badge">◐ テキストのみ対応</div></div>
+      <div class="step done"><div class="step-idx">② </div><div class="step-title">ギガファイル便リンク検出</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">③ </div><div class="step-title">自動ダウンロード開始</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">④ </div><div class="step-title">ダウンロード完了検知</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">⑤ </div><div class="step-title">ファイル一覧取得</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">⑥ </div><div class="step-title">ファイル名解析（例: 32-1ド.mp4→32-1）</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">⑦ </div><div class="step-title">スプレッドシートに転記</div><div class="step-badge">✓ 完了（テストシート）</div></div>
+      <div class="step todo"><div class="step-idx">⑧ </div><div class="step-title">Premiere Pro起動</div><div class="step-badge">○ 未着手</div></div>
+      <div class="step todo"><div class="step-idx">⑨ </div><div class="step-title">既存ExtendScript実行</div><div class="step-badge">○ 未着手</div></div>
+      <div class="step todo"><div class="step-idx">⑩ </div><div class="step-title">素材読み込み＆シーケンス作成</div><div class="step-badge">○ 未着手</div></div>
+      <div class="step todo"><div class="step-idx">⑪ </div><div class="step-title">編集可能状態で待機</div><div class="step-badge">○ 未着手</div></div>
+    </div>
+  </section>
+
+  <!-- 3. コンポーネント別進捗 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <div>
+        <div class="section-title">コンポーネント別 進捗詳細</div>
+      </div>
+    </div>
+    <div class="bars">
+      <div class="bar-row">
+        <div class="bar-name">Claude連携基盤<div class="bar-sub">OAuth2.1 / Streamable HTTP / Cloudflare Tunnel</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
+        <div class="bar-pct" style="color:#34d399">100%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">自動ダウンロード<div class="bar-sub">Playwright・ZIP自動解凍・ZIP名フォルダへ展開</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
+        <div class="bar-pct" style="color:#34d399">100%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">大容量ファイル対応<div class="bar-sub">〜20GB・30分超のDLでもタイムアウトしない設計</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
+        <div class="bar-pct" style="color:#34d399">100%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">ファイル名解析<div class="bar-sub">バッチ識別子の自動抽出</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
+        <div class="bar-pct" style="color:#34d399">100%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">スプレッドシート連携<div class="bar-sub">Google Sheets API・テストシートへ実転記済み</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
+        <div class="bar-pct" style="color:#34d399">100%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">Premiere Pro自動化<div class="bar-sub">素材読み込み・シーケンス作成</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="0" style="background:#6b7280"></div></div>
+        <div class="bar-pct" style="color:#6b7280">0%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">キャラクターUI<div class="bar-sub">React製・状態別アニメーション</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="0" style="background:#6b7280"></div></div>
+        <div class="bar-pct" style="color:#6b7280">0%</div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-name">音声起動<div class="bar-sub">ウェイクワード検出・文字起こし</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="0" style="background:#6b7280"></div></div>
+        <div class="bar-pct" style="color:#6b7280">0%</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. アーキテクチャ -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">04</span>
+      <div>
+        <div class="section-title">現在のシステム構成</div>
+        <div class="section-desc">緑＝稼働中、点線＝未接続</div>
+      </div>
+    </div>
+    <div class="arch">
+      <div class="arch-node live"><div class="n-title">📱 Claude.ai</div><div class="n-sub">コネクタ経由・OAuth 2.1</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node live"><div class="n-title">☁️ Cloudflare Tunnel</div><div class="n-sub">Streamable HTTP (/mcp)</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-col">
+        <div class="arch-node live"><div class="n-title">💻 MacBook Air<br/>MCPサーバー</div><div class="n-sub">FastMCP / Playwright</div></div>
+        <div class="arch-arrow-down">↓</div>
+        <div class="arch-node live"><div class="n-title">🎬 ギガファイル便</div><div class="n-sub">自動DL・ZIP解凍・フォルダ整理</div></div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node live"><div class="n-title">📊 Google Sheets</div><div class="n-sub">テストシートへ自動転記</div></div>
+    </div>
+  </section>
+
+  <!-- 5. 解決した課題 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">05</span>
+      <div>
+        <div class="section-title">直近で解決した技術的課題</div>
+        <div class="section-desc">8/14の接続確立に続き、8/18に転記・ZIP整理まで到達</div>
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="t-item">
+        <div class="t-time">午後</div>
+        <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
+        <div class="t-body">
+          <div class="t-title">「MCPサーバーが見つからない」エラー</div>
+          <div class="t-cause">OAuth認可は成功するのに、Claude.aiがサーバーを発見できず接続失敗</div>
+          <div class="t-fix"><b>原因：</b>OAuthメタデータのresourceフィールドがコネクタ登録URL（末尾/mcp）と不一致 → <b>対策：</b>URLを完全一致させて解消</div>
+        </div>
+      </div>
+      <div class="t-item">
+        <div class="t-time">夕方</div>
+        <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
+        <div class="t-body">
+          <div class="t-title">ダウンロード自体がタイムアウトする</div>
+          <div class="t-cause">ギガファイル便のページが広告・解析スクリプトの通信でいつまでも「待機完了」にならない</div>
+          <div class="t-fix"><b>原因：</b>ページ読み込み判定にnetworkidleを使用 → <b>対策：</b>DOM構築完了＋ボタン出現待ちに変更し安定化</div>
+        </div>
+      </div>
+      <div class="t-item">
+        <div class="t-time">夜</div>
+        <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
+        <div class="t-body">
+          <div class="t-title">Macでは成功しているのにClaude側は「エラー」表示</div>
+          <div class="t-cause">大容量ファイル（20GB級）で5分を超えるとClaude側だけ諦めてしまう</div>
+          <div class="t-fix"><b>原因：</b>Claude.aiのツール実行タイムアウト（最大5分）の壁 → <b>対策：</b>ダウンロードをバックグラウンド化し、即座に応答を返す設計に変更</div>
+        </div>
+      </div>
+      <div class="t-item">
+        <div class="t-time">8/18</div>
+        <div class="t-line-wrap"><div class="t-dot"></div></div>
+        <div class="t-body">
+          <div class="t-title">スマホから本番に近いZIPを送り、解凍〜シート転記まで確認</div>
+          <div class="t-cause">10GB級のZIPがActive直下に散らかる、転記がボタン失敗でスキップされる、Quick Tunnel再起動でURLが変わる</div>
+          <div class="t-fix"><b>対策：</b>ZIPは名前付きフォルダへ自動展開。保存済みファイルがあれば転記する。Tunnelとサーバーを別起動にしてコード修正で切れないようにした。固定ドメイン化は未着手</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. 次のステップ -->
+  <section style="border-bottom:none;">
+    <div class="section-head">
+      <span class="section-num">06</span>
+      <div>
+        <div class="section-title">次のステップ</div>
+      </div>
+    </div>
+    <div class="next-grid">
+      <div class="next-card p1">
+        <div class="n-pri">PRIORITY 1</div>
+        <div class="n-title">本番シートへの切替</div>
+        <div class="n-desc">テストシートでの転記は確認済み。本番のパートナーシートに切り替えて実案件で使う</div>
+      </div>
+      <div class="next-card p1">
+        <div class="n-pri">PRIORITY 1</div>
+        <div class="n-title">Tunnelの固定ドメイン化</div>
+        <div class="n-desc">Quick Tunnelは再起動でURLが変わる。Named Tunnel＋独自ドメインでClaude再登録をなくす（ムームーのNSは触らない）</div>
+      </div>
+      <div class="next-card p2">
+        <div class="n-pri">PRIORITY 2</div>
+        <div class="n-title">Premiere Pro自動化</div>
+        <div class="n-desc">osascript経由でPremiereを起動し、既存ExtendScriptで素材読み込み・シーケンス作成まで自動化</div>
+      </div>
+      <div class="next-card p3">
+        <div class="n-pri">PRIORITY 3</div>
+        <div class="n-title">キャラクターUI・音声起動</div>
+        <div class="n-desc">React製の状態アニメーションUIと、「ホッシーくん！」ウェイクワードによる音声トリガーを追加</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    ホッシーくん AI秘書プロジェクト &nbsp;·&nbsp; Progress Report updated 2026-08-18
+  </footer>
+</div>
+
+<script>
+  const overallPct = 60; // 加重平均（本文の重み×達成率の合計）
+  const circumference = 2 * Math.PI * 95;
+  const ringFg = document.getElementById('ringFg');
+  const ringPct = document.getElementById('ringPct');
+
+  window.addEventListener('load', () => {
+    requestAnimationFrame(() => {
+      const offset = circumference - (overallPct / 100) * circumference;
+      ringFg.style.strokeDasharray = circumference;
+      ringFg.style.strokeDashoffset = offset;
+
+      document.querySelectorAll('.bar-fill').forEach(el => {
+        const w = el.getAttribute('data-w');
+        setTimeout(() => { el.style.width = w + '%'; }, 100);
+      });
+
+      let cur = 0;
+      const step = () => {
+        cur += 1;
+        ringPct.textContent = cur + '%';
+        if (cur < overallPct) requestAnimationFrame(() => setTimeout(step, 14));
+      };
+      step();
+    });
+  });
+</script>
+</body>
+</html>
