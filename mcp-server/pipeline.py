@@ -69,9 +69,5 @@ async def run_download_pipeline(gigafile_url: str) -> str:
             lines.append(f"🎬 Premiere: 自動セットアップに失敗しました（{type(e).__name__}: {e}）")
 
     last_job_status = "\n".join(lines)
-    set_status(
-        "done",
-        "できた！.prproj を開けばすぐ編集できるよ",
-        last_job_status.split("\n")[0],
-    )
+    set_status("idle", "zzz…", "")
     return last_job_status

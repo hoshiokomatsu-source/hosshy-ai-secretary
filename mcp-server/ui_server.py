@@ -62,6 +62,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/hosshy-sleep.png":
             self._file(UI_DIR / "hosshy-sleep.png", "image/png")
             return
+        if parsed.path == "/hosshy-work.png":
+            self._file(UI_DIR / "hosshy-work.png", "image/png")
+            return
         if parsed.path == "/api/status":
             self._json(200, read_status())
             return

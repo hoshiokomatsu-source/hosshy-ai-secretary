@@ -10,7 +10,7 @@ STATUS_PATH = "/tmp/hossy_status.json"
 
 IDLE = {
     "state": "idle",
-    "line": "zzz… ホッシーくん！って呼んでくれたら起きるよ",
+    "line": "zzz…",
     "detail": "",
 }
 
