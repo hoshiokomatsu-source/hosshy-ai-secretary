@@ -13,6 +13,8 @@ DOWNLOAD_BUTTON_SELECTOR = (
     "a:has-text('ダウンロード')"
 )
 
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
+
 
 async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
     """ギガファイル便のURLにアクセスしてファイルをダウンロードする。
@@ -79,7 +81,7 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
         if downloaded:
             print(f"[downloader] ボタン処理は失敗したが、新規ファイルを {len(downloaded)} 件検出したので転記対象にする")
 
-    return downloaded
+    return _expand_archives(downloaded, download_dir)
 
 
 def _files_added_since(download_dir: str, before: dict) -> list[dict]:
@@ -99,6 +101,72 @@ def _files_added_since(download_dir: str, before: dict) -> list[dict]:
                 "stem": _extract_stem(name),
             })
     return found
+
+
+def _expand_archives(files: list[dict], download_dir: str) -> list[dict]:
+    """ZIPは解凍し、中の動画を転記対象にする。ZIP自体は転記しない。"""
+    expanded = []
+    for f in files:
+        path = f["path"]
+        if Path(path).suffix.lower() != ".zip":
+            expanded.append(f)
+            continue
+        folder = Path(path).stem
+        extracted = _unzip_archive(path, download_dir, folder)
+        if extracted:
+            expanded.extend(extracted)
+        else:
+            expanded.append(f)
+    return expanded
+
+
+def _unzip_archive(zip_path: str, dest_dir: str, folder_name: str) -> list[dict]:
+    import zipfile
+
+    print(f"[downloader] ZIP解凍開始: {zip_path}")
+    extracted = []
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            for info in zf.infolist():
+                if info.is_dir():
+                    continue
+                name = _zip_member_name(info)
+                out_name = Path(name).name
+                out_path = os.path.join(dest_dir, out_name)
+                ext = Path(out_name).suffix.lower()
+                if not os.path.exists(out_path) or os.path.getsize(out_path) != info.file_size:
+                    print(f"[downloader] 展開中: {out_name}")
+                    with zf.open(info) as src, open(out_path, "wb") as dst:
+                        while True:
+                            chunk = src.read(1024 * 1024 * 8)
+                            if not chunk:
+                                break
+                            dst.write(chunk)
+                if ext in VIDEO_EXTS:
+                    extracted.append({
+                        "name": out_name,
+                        "path": out_path,
+                        "size": os.path.getsize(out_path),
+                        "stem": _extract_stem(out_name),
+                        "folder": folder_name,
+                    })
+        print(f"[downloader] ZIP解凍完了: {len(extracted)} 本")
+        return extracted
+    except Exception as e:
+        print(f"[downloader] ZIP解凍失敗: {e}")
+        return []
+
+
+def _zip_member_name(info) -> str:
+    name = info.filename
+    if info.flag_bits & 0x800:
+        return name
+    for enc in ("cp932", "utf-8"):
+        try:
+            return name.encode("cp437").decode(enc)
+        except Exception:
+            continue
+    return name
 
 
 def _extract_stem(filename: str) -> str:

@@ -55,7 +55,7 @@ async def write_files_to_sheet(files: list[dict]) -> str:
 
         rows = []
         for f in files:
-            folder_name = _extract_folder_name(f["name"], today)
+            folder_name = f.get("folder") or _extract_folder_name(f["name"], today)
             rows.append([
                 f"{today.month}月",
                 folder_name,
