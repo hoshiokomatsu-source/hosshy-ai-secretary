@@ -60,7 +60,7 @@ async def write_files_to_sheet(files: list[dict]) -> str:
                 f"{today.month}月",
                 folder_name,
                 f["stem"],
-                "動画編集",
+                os.getenv("SHEET_CONTENT", "モザイク処理・加工"),
                 _short_date(today),
                 _short_date(today + timedelta(days=7)),
             ])

@@ -18,12 +18,14 @@
   .stage { min-height: 100%; display: flex; flex-direction: column; align-items: center;
     justify-content: center; gap: 28px; padding: 40px 24px 80px; }
   .char-wrap { position: relative; width: min(52vh, 420px); height: min(52vh, 420px); }
-  .char { width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 80%; }
+  .char { width: 100%; height: 100%; object-fit: contain; transform-origin: 50% 80%; position: absolute; inset: 0; }
+  .char-sleep { display: none; }
   .spark { position: absolute; color: #fbbf24; font-size: 28px; opacity: 0; pointer-events: none; }
   .spark.l { left: -8%; top: 12%; }
   .spark.r { right: -8%; top: 18%; }
 
-  .idle .char { animation: sleep 3.6s ease-in-out infinite; filter: brightness(.72) saturate(.85); }
+  .idle .char-awake { display: none; }
+  .idle .char-sleep { display: block; animation: sleep 3.6s ease-in-out infinite; }
   .wake .char { animation: pop .7s cubic-bezier(.2,1.4,.3,1) both; filter: brightness(1.08); }
   .wake .spark { animation: sparkle .7s ease both; }
   .working .char { animation: work .7s ease-in-out infinite; }
@@ -56,7 +58,8 @@
 <div class="stage idle" id="stage">
   <div class="char-wrap">
     <span class="spark l">✦</span>
-    <img class="char" src="/hosshy.png" alt="ホッシーくん" />
+    <img class="char char-awake" src="/hosshy.png" alt="ホッシーくん" />
+    <img class="char char-sleep" src="/hosshy-sleep.png" alt="寝ているホッシーくん" />
     <span class="spark r">✦</span>
   </div>
   <div class="caption">
