@@ -123,7 +123,9 @@ def _expand_archives(files: list[dict], download_dir: str) -> list[dict]:
 def _unzip_archive(zip_path: str, dest_dir: str, folder_name: str) -> list[dict]:
     import zipfile
 
-    print(f"[downloader] ZIP解凍開始: {zip_path}")
+    out_dir = os.path.join(dest_dir, folder_name)
+    os.makedirs(out_dir, exist_ok=True)
+    print(f"[downloader] ZIP解凍開始: {zip_path} → {out_dir}")
     extracted = []
     try:
         with zipfile.ZipFile(zip_path) as zf:
@@ -132,7 +134,7 @@ def _unzip_archive(zip_path: str, dest_dir: str, folder_name: str) -> list[dict]
                     continue
                 name = _zip_member_name(info)
                 out_name = Path(name).name
-                out_path = os.path.join(dest_dir, out_name)
+                out_path = os.path.join(out_dir, out_name)
                 ext = Path(out_name).suffix.lower()
                 if not os.path.exists(out_path) or os.path.getsize(out_path) != info.file_size:
                     print(f"[downloader] 展開中: {out_name}")
