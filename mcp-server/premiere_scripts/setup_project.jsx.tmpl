@@ -1,0 +1,77 @@
+// ホッシーくんが生成する Premiere セットアップスクリプト。
+// 新規プロジェクト作成 → 素材読み込み → NewSequence.jsx でシーケンス作成。
+(function () {
+    var RESULT = __RESULT_PATH__;
+    var projectPath = __PROJECT_PATH__;
+    var mediaPaths = __MEDIA_PATHS__;
+    var sequenceJsx = __SEQUENCE_JSX__;
+
+    function writeResult(msg) {
+        var f = new File(RESULT);
+        f.encoding = "UTF8";
+        f.open("w");
+        f.write(msg);
+        f.close();
+        $.writeln("[hossy] " + msg);
+    }
+
+    try {
+        if (app.project && app.project.path) {
+            app.project.closeDocument(0, 0);
+        }
+
+        var projFile = new File(projectPath);
+        if (projFile.exists) {
+            if (!app.openDocument(projectPath, 1, 1, 1)) {
+                writeResult("ERROR 既存プロジェクトを開けませんでした: " + projectPath);
+                return;
+            }
+        } else {
+            if (!app.newProject(projectPath)) {
+                writeResult("ERROR 新規プロジェクトを作成できませんでした: " + projectPath);
+                return;
+            }
+        }
+
+        if (mediaPaths.length > 0) {
+            app.project.importFiles(mediaPaths, 1, app.project.rootItem, 0);
+        }
+
+        var waited = 0;
+        var need = mediaPaths.length;
+        while (waited < 180000) {
+            var ready = 0;
+            var n = app.project.rootItem.children.numItems;
+            var i;
+            for (i = 0; i < n; i++) {
+                var item = app.project.rootItem.children[i];
+                if (item.type == ProjectItemType.CLIP || item.type == ProjectItemType.FILE) {
+                    ready++;
+                }
+            }
+            if (ready >= need) {
+                break;
+            }
+            $.sleep(500);
+            waited += 500;
+        }
+
+        var seqFile = new File(sequenceJsx);
+        if (!seqFile.exists) {
+            writeResult("ERROR シーケンス作成スクリプトがありません: " + sequenceJsx);
+            return;
+        }
+        $.evalFile(seqFile);
+
+        app.project.save();
+        $.sleep(1000);
+        writeResult("OK project=" + projectPath + " clips=" + mediaPaths.length);
+
+        // 帰宅後に .prproj を開くだけで編集できる状態にするため、保存して Premiere を終了する
+        app.project.closeDocument(1, 0);
+        $.sleep(500);
+        app.quit();
+    } catch (e) {
+        writeResult("ERROR " + e.toString());
+    }
+})();

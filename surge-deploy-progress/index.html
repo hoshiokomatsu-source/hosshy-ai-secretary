@@ -242,10 +242,10 @@
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">自動ダウンロード（ギガファイル便）</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">ファイル名解析・整理</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">スプレッドシート自動転記</span><span class="legend-weight">重み15%</span><span class="legend-val" style="color:#34d399">100%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#6b7280"></span><span class="legend-name">Premiere Pro自動化</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#6b7280">0%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">Premiere Pro自動化</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#6b7280"></span><span class="legend-name">キャラクターUI（React）</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#6b7280">0%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#6b7280"></span><span class="legend-name">音声起動（ウェイクワード）</span><span class="legend-weight">重み5%</span><span class="legend-val" style="color:#6b7280">0%</span></div>
-        <div class="legend-note">スマホのClaudeからギガファイル便リンクを送ると、Macがダウンロード→ZIP解凍→名前付きフォルダへ整理→テスト用シートへ転記するまで実運用確認済み（8/18）。残りはPremiere自動化・専用UI・音声起動。</div>
+        <div class="legend-note">スマホのClaudeからギガファイル便リンクを送ると、Macがダウンロード→ZIP解凍→シート転記→Premiereでシーケンス作成→保存して終了、まで実運用確認済み（8/18夜）。残りは専用UIと音声起動。</div>
       </div>
     </div>
   </section>
@@ -256,7 +256,7 @@
       <span class="section-num">02</span>
       <div>
         <div class="section-title">処理フロー（要件定義書 フェーズ1）の到達状況</div>
-        <div class="section-desc">①〜⑪の11ステップのうち、⑦までが動作確認済み</div>
+        <div class="section-desc">①〜⑪の11ステップのうち、テキスト経路は⑪まで動作確認済み（音声起動のみ未）</div>
       </div>
     </div>
     <div class="pipeline">
@@ -267,10 +267,10 @@
       <div class="step done"><div class="step-idx">⑤ </div><div class="step-title">ファイル一覧取得</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑥ </div><div class="step-title">ファイル名解析（例: 32-1ド.mp4→32-1）</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑦ </div><div class="step-title">スプレッドシートに転記</div><div class="step-badge">✓ 完了（テストシート）</div></div>
-      <div class="step todo"><div class="step-idx">⑧ </div><div class="step-title">Premiere Pro起動</div><div class="step-badge">○ 未着手</div></div>
-      <div class="step todo"><div class="step-idx">⑨ </div><div class="step-title">既存ExtendScript実行</div><div class="step-badge">○ 未着手</div></div>
-      <div class="step todo"><div class="step-idx">⑩ </div><div class="step-title">素材読み込み＆シーケンス作成</div><div class="step-badge">○ 未着手</div></div>
-      <div class="step todo"><div class="step-idx">⑪ </div><div class="step-title">編集可能状態で待機</div><div class="step-badge">○ 未着手</div></div>
+      <div class="step done"><div class="step-idx">⑧ </div><div class="step-title">Premiere Pro起動</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">⑨ </div><div class="step-title">既存ExtendScript実行</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">⑩ </div><div class="step-title">素材読み込み＆シーケンス作成</div><div class="step-badge">✓ 完了</div></div>
+      <div class="step done"><div class="step-idx">⑪ </div><div class="step-title">編集可能状態で待機</div><div class="step-badge">✓ 保存して終了</div></div>
     </div>
   </section>
 
@@ -309,9 +309,9 @@
         <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
       <div class="bar-row">
-        <div class="bar-name">Premiere Pro自動化<div class="bar-sub">素材読み込み・シーケンス作成</div></div>
-        <div class="bar-track"><div class="bar-fill" data-w="0" style="background:#6b7280"></div></div>
-        <div class="bar-pct" style="color:#6b7280">0%</div>
+        <div class="bar-name">Premiere Pro自動化<div class="bar-sub">プロジェクト作成・素材読み込み・シーケンス作成・保存終了</div></div>
+        <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
+        <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
       <div class="bar-row">
         <div class="bar-name">キャラクターUI<div class="bar-sub">React製・状態別アニメーション</div></div>
@@ -347,6 +347,8 @@
       </div>
       <div class="arch-arrow">→</div>
       <div class="arch-node live"><div class="n-title">📊 Google Sheets</div><div class="n-sub">テストシートへ自動転記</div></div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node live"><div class="n-title">🎞 Premiere Pro</div><div class="n-sub">シーケンス作成後に保存終了</div></div>
     </div>
   </section>
 
@@ -388,7 +390,7 @@
         </div>
       </div>
       <div class="t-item">
-        <div class="t-time">8/18</div>
+        <div class="t-time">8/18夜</div>
         <div class="t-line-wrap"><div class="t-dot"></div></div>
         <div class="t-body">
           <div class="t-title">スマホから本番に近いZIPを送り、解凍〜シート転記まで確認</div>
@@ -420,13 +422,13 @@
       </div>
       <div class="next-card p2">
         <div class="n-pri">PRIORITY 2</div>
-        <div class="n-title">Premiere Pro自動化</div>
-        <div class="n-desc">osascript経由でPremiereを起動し、既存ExtendScriptで素材読み込み・シーケンス作成まで自動化</div>
+        <div class="n-title">キャラクターUI</div>
+        <div class="n-desc">React製の状態アニメーションUIを Mac Studio モニターに常駐させる</div>
       </div>
       <div class="next-card p3">
         <div class="n-pri">PRIORITY 3</div>
-        <div class="n-title">キャラクターUI・音声起動</div>
-        <div class="n-desc">React製の状態アニメーションUIと、「ホッシーくん！」ウェイクワードによる音声トリガーを追加</div>
+        <div class="n-title">音声起動</div>
+        <div class="n-desc">「ホッシーくん！」ウェイクワードによる音声トリガーを追加</div>
       </div>
     </div>
   </section>
@@ -437,7 +439,7 @@
 </div>
 
 <script>
-  const overallPct = 60; // 加重平均（本文の重み×達成率の合計）
+  const overallPct = 85; // 加重平均（本文の重み×達成率の合計）
   const circumference = 2 * Math.PI * 95;
   const ringFg = document.getElementById('ringFg');
   const ringPct = document.getElementById('ringPct');

@@ -50,9 +50,9 @@ Claudeアプリ（外出）┘                                          ─▶ �
 ├── README.md
 ├── docs/
 │   └── requirements.md   # 要件定義書 ver.0.1
-└── surge-deploy/
-    ├── index.html        # プレゼン用Webページ
-    └── hosshy.png        # ホッシーくんキャラクター素材
+├── surge-deploy/
+│   ├── index.html        # プレゼン用Webページ
+│   └── hosshy.png        # ホッシーくんキャラクター素材
 └── surge-deploy-progress/
     └── index.html        # 開発進捗レポート
 ```

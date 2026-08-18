@@ -23,6 +23,13 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from downloader import download_gigafile_url
 from oauth_provider import SingleUserOAuthProvider
+from premiere import (
+    folder_from_downloaded_files,
+    premiere_is_running,
+    prepare_premiere_project,
+    read_premiere_result,
+    resolve_media_folder,
+)
 from sheets import write_files_to_sheet
 
 load_dotenv()
@@ -104,6 +111,16 @@ async def _run_download_and_record(gigafile_url: str) -> None:
     lines.extend([f"  - {name}" for name in file_names])
     lines.append("")
     lines.append(f"📊 スプレッドシート: {sheet_result}")
+
+    premiere_folder = folder_from_downloaded_files(downloaded_files, DOWNLOAD_DIR)
+    if premiere_folder:
+        try:
+            premiere = prepare_premiere_project(premiere_folder)
+            lines.append("")
+            lines.append(f"🎬 Premiere: {premiere['message']}")
+        except Exception as e:
+            lines.append("")
+            lines.append(f"🎬 Premiere: 自動セットアップに失敗しました（{type(e).__name__}: {e}）")
     _last_job_status = "\n".join(lines)
 
 
@@ -152,6 +169,55 @@ async def list_downloaded_files() -> str:
     lines = [f"📁 {DOWNLOAD_DIR}", ""]
     lines.extend([f"  {i+1}. {f}" for i, f in enumerate(sorted(files))])
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def prepare_premiere(folder_path: str = "") -> str:
+    """ダウンロード済みフォルダから Premiere プロジェクトを作り、素材を読み込み、動画の数だけシーケンスを作成する。
+
+    プロジェクト名はフォルダ名と同じ（例: みね20260804/ → みね20260804.prproj）。
+    シーケンス作成は既存の NewSequence.jsx を実行し、保存して Premiere を終了する。
+    帰宅後に .prproj を開くと、素材とシーケンスが入った状態で編集を始められる。
+
+    Args:
+        folder_path: 動画が入ったフォルダ。空なら Active 内で一番新しいバッチフォルダを使う。
+    """
+    try:
+        folder = resolve_media_folder(folder_path or None, DOWNLOAD_DIR)
+        result = prepare_premiere_project(folder)
+    except Exception as e:
+        return f"❌ Premiere セットアップを開始できませんでした。\n詳細: {type(e).__name__}: {e}"
+
+    lines = [
+        result["message"],
+        f"📁 フォルダ: {result['folder']}",
+        f"🎞 動画: {result['video_count']} 本",
+        f"📄 プロジェクト: {result['project_path']}",
+    ]
+    if result["status"] == "started":
+        lines.append("完了したら Premiere は自動で終了します。状況は「Premiereの状況を確認して」で聞けます。")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def check_premiere_status() -> str:
+    """直近の Premiere セットアップ結果を確認する。"""
+    result = read_premiere_result()
+    if not result:
+        if premiere_running_message := _premiere_running_hint():
+            return premiere_running_message
+        return "まだ Premiere セットアップの結果がありません。先に prepare_premiere を実行してください。"
+    if result.startswith("OK"):
+        return f"✅ {result}"
+    if result.startswith("TIMEOUT"):
+        return f"⏳ {result}"
+    return f"❌ {result}"
+
+
+def _premiere_running_hint() -> str | None:
+    if premiere_is_running() and not read_premiere_result():
+        return "⏳ Premiere は起動しています。プロジェクト作成〜シーケンス作成の完了を待っています。"
+    return None
 
 
 if __name__ == "__main__":
