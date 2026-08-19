@@ -70,22 +70,57 @@
     max-width: 42em;
     white-space: pre-wrap;
   }
+  .meter {
+    display: none;
+    width: min(58vh, 480px);
+    height: 12px;
+    background: #1e2022;
+    border: 1px solid #2a2d30;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative;
+  }
+  .working .meter { display: block; }
+  .meter-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    transition: width .35s ease;
+  }
+  .meter-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text);
+    text-shadow: 0 1px 4px rgba(0,0,0,.8);
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
 <div class="stage idle" id="stage">
   <div class="char-wrap">
-    <img class="char char-sleep" src="/hosshy-sleep.png?v=8" alt="" />
-    <img class="char char-work-a" src="/hosshy-work.png?v=8" alt="" />
-    <img class="char char-work-b" src="/hosshy-work-desk.png?v=8" alt="" />
+    <img class="char char-sleep" src="/hosshy-sleep.png?v=9" alt="" />
+    <img class="char char-work-a" src="/hosshy-work.png?v=9" alt="" />
+    <img class="char char-work-b" src="/hosshy-work-desk.png?v=9" alt="" />
   </div>
   <div class="line" id="line">zzz…</div>
+  <div class="meter" id="meter">
+    <div class="meter-fill" id="meterFill"></div>
+    <div class="meter-label" id="meterLabel"></div>
+  </div>
   <div class="detail" id="detail"></div>
 </div>
 <script>
 const stage = document.getElementById("stage");
 const lineEl = document.getElementById("line");
 const detailEl = document.getElementById("detail");
+const meterFill = document.getElementById("meterFill");
+const meterLabel = document.getElementById("meterLabel");
 
 function vis(state) {
   return state === "working" ? "working" : "idle";
@@ -98,9 +133,19 @@ function apply(data) {
   if (state === "working") {
     lineEl.textContent = data.line || "仕事してるよ…";
     detailEl.textContent = data.detail || "";
+    if (data.progress == null || data.progress === "") {
+      meterFill.style.width = "12%";
+      meterLabel.textContent = "";
+    } else {
+      const pct = Math.max(0, Math.min(100, Number(data.progress)));
+      meterFill.style.width = pct + "%";
+      meterLabel.textContent = Math.round(pct) + "%";
+    }
   } else {
     lineEl.textContent = "zzz…";
     detailEl.textContent = "";
+    meterFill.style.width = "0%";
+    meterLabel.textContent = "";
   }
 }
 

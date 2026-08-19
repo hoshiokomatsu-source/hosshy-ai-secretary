@@ -15,10 +15,11 @@ IDLE = {
     "line": "zzz…",
     "detail": "",
     "pose": "laptop",
+    "progress": None,
 }
 
 
-def set_status(state: str, line: str, detail: str = "") -> None:
+def set_status(state: str, line: str, detail: str = "", progress=None) -> None:
     prev = read_status()
     if state == "working":
         pose = prev.get("pose") if prev.get("state") == "working" else random.choice(WORK_POSES)
@@ -26,11 +27,19 @@ def set_status(state: str, line: str, detail: str = "") -> None:
             pose = "laptop"
     else:
         pose = prev.get("pose") if prev.get("pose") in WORK_POSES else "laptop"
+        progress = None
+    if progress is None and state == "working":
+        progress = prev.get("progress")
+    try:
+        progress = None if progress is None else max(0, min(100, int(progress)))
+    except (TypeError, ValueError):
+        progress = None
     payload = {
         "state": state,
         "line": line,
         "detail": detail,
         "pose": pose,
+        "progress": progress,
         "updated_at": datetime.now().strftime("%H:%M:%S"),
     }
     tmp = STATUS_PATH + ".tmp"

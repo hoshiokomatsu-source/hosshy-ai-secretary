@@ -30,7 +30,7 @@ CLOSE_BUTTON_SELECTOR = (
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
 
 
-async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
+async def download_gigafile_url(url: str, download_dir: str, on_progress=None) -> list[dict]:
     """ギガファイル便のURLにアクセスしてファイルをダウンロードする。
 
     Returns:
@@ -47,52 +47,66 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
         context = await browser.new_context(accept_downloads=True)
         await context.route("**/*", _block_ad_request)
         page = await context.new_page()
-
-        # ギガファイル便は広告・解析スクリプトのバックグラウンド通信が続くため
-        # "networkidle" だと（実際にはページが表示済みでも）タイムアウトしやすい。
-        # DOM構築完了まで待ち、あとはダウンロードボタンの出現を明示的に待つ。
-        await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
-
+        stop_watch = asyncio.Event()
+        watch = asyncio.create_task(_watch_gigafile_progress(page, on_progress, stop_watch))
         try:
-            await page.wait_for_selector(DOWNLOAD_BUTTON_SELECTOR, timeout=30_000)
-        except PlaywrightTimeoutError:
-            pass  # ボタンが見つからない場合は下のフォールバック検索に任せる
+            # ギガファイル便は広告・解析スクリプトのバックグラウンド通信が続くため
+            # "networkidle" だと（実際にはページが表示済みでも）タイムアウトしやすい。
+            # DOM構築完了まで待ち、あとはダウンロードボタンの出現を明示的に待つ。
+            _emit(on_progress, 8, "ページを開いてるよ…", url)
+            await page.goto(url, wait_until="domcontentloaded", timeout=30_000)
 
-        await _dismiss_ads(page)
-
-        # ギガファイル便のダウンロードボタンを探す
-        # 複数ファイルが含まれる場合を考慮して全ボタンを取得
-        download_buttons = await page.query_selector_all(DOWNLOAD_BUTTON_SELECTOR)
-
-        if not download_buttons:
-            # フォールバック: ページ内の全ダウンロードリンクを試す
-            download_buttons = await page.query_selector_all("[onclick*='download'], [href*='download']")
-
-        for button in download_buttons:
             try:
-                await _dismiss_ads(page)
-                async with page.expect_download(timeout=120_000) as download_info:
-                    await _click_download(button)
+                await page.wait_for_selector(DOWNLOAD_BUTTON_SELECTOR, timeout=30_000)
+            except PlaywrightTimeoutError:
+                pass  # ボタンが見つからない場合は下のフォールバック検索に任せる
 
-                download: Download = await download_info.value
-                original_name = download.suggested_filename or f"file_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+            await _dismiss_ads(page)
 
-                save_path = os.path.join(download_dir, original_name)
-                await download.save_as(save_path)
+            # ギガファイル便のダウンロードボタンを探す
+            # 複数ファイルが含まれる場合を考慮して全ボタンを取得
+            download_buttons = await page.query_selector_all(DOWNLOAD_BUTTON_SELECTOR)
 
-                file_size = os.path.getsize(save_path)
-                downloaded.append({
-                    "name": original_name,
-                    "path": save_path,
-                    "size": file_size,
-                    "stem": _extract_stem(original_name),
-                })
+            if not download_buttons:
+                # フォールバック: ページ内の全ダウンロードリンクを試す
+                download_buttons = await page.query_selector_all("[onclick*='download'], [href*='download']")
 
-            except Exception as e:
-                print(f"[downloader] ボタンのクリック失敗: {e}")
-                continue
+            total = max(len(download_buttons), 1)
+            await _attach_cdp_progress(page, on_progress)
 
-        await browser.close()
+            for i, button in enumerate(download_buttons, 1):
+                try:
+                    _emit(on_progress, 10 + int(70 * (i - 1) / total), f"ダウンロードしてるよ… {i}/{total}", url)
+                    await _dismiss_ads(page)
+                    async with page.expect_download(timeout=120_000) as download_info:
+                        await _click_download(button)
+
+                    download: Download = await download_info.value
+                    original_name = download.suggested_filename or f"file_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+                    _emit(on_progress, 10 + int(70 * (i - 0.2) / total), f"保存してるよ… {original_name}", f"{i}/{total}")
+
+                    save_path = os.path.join(download_dir, original_name)
+                    await download.save_as(save_path)
+
+                    file_size = os.path.getsize(save_path)
+                    downloaded.append({
+                        "name": original_name,
+                        "path": save_path,
+                        "size": file_size,
+                        "stem": _extract_stem(original_name),
+                    })
+
+                except Exception as e:
+                    print(f"[downloader] ボタンのクリック失敗: {e}")
+                    continue
+        finally:
+            stop_watch.set()
+            watch.cancel()
+            try:
+                await watch
+            except asyncio.CancelledError:
+                pass
+            await browser.close()
 
     if not downloaded:
         downloaded = _files_added_since(download_dir, before)
@@ -108,6 +122,61 @@ async def _block_ad_request(route) -> None:
         await route.abort()
         return
     await route.continue_()
+
+
+def _emit(on_progress, pct, line: str, detail: str = "") -> None:
+    if not on_progress:
+        return
+    try:
+        on_progress(int(pct), line, detail)
+    except Exception:
+        pass
+
+
+async def _watch_gigafile_progress(page, on_progress, stop: asyncio.Event) -> None:
+    """ページ上の『12%』表示を拾ってUIに流す。"""
+    last = None
+    while not stop.is_set():
+        try:
+            pct = await page.evaluate(
+                """() => {
+                  const t = document.body ? document.body.innerText : '';
+                  const ms = [...t.matchAll(/(\\d{1,3})\\s*%/g)]
+                    .map(m => Number(m[1])).filter(n => n >= 0 && n <= 100);
+                  if (!ms.length) return null;
+                  return Math.max(...ms);
+                }"""
+            )
+            if isinstance(pct, (int, float)) and pct != last:
+                last = int(pct)
+                mapped = 10 + int(last * 0.7)
+                _emit(on_progress, mapped, f"ダウンロードしてるよ… {last}%", f"{last}%")
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=0.8)
+        except asyncio.TimeoutError:
+            continue
+
+
+async def _attach_cdp_progress(page, on_progress) -> None:
+    """ブラウザの実バイト進捗。Playwrightの保存処理は触らない。"""
+    try:
+        cdp = await page.context.new_cdp_session(page)
+
+        def _on_prog(params: dict) -> None:
+            total = params.get("totalBytes") or 0
+            recv = params.get("receivedBytes") or 0
+            if total <= 0:
+                return
+            pct = min(100, int(recv * 100 / total))
+            mb = f"{recv/1024/1024:.1f}/{total/1024/1024:.1f} MB"
+            _emit(on_progress, 10 + int(pct * 0.7), f"ダウンロードしてるよ… {pct}%", mb)
+
+        cdp.on("Browser.downloadProgress", _on_prog)
+        print("[downloader] CDPのダウンロード進捗を監視する")
+    except Exception as e:
+        print(f"[downloader] CDP進捗は使えない: {e}")
 
 
 async def _dismiss_ads(page) -> None:

@@ -23,11 +23,16 @@ async def run_download_pipeline(gigafile_url: str) -> str:
     global last_job_status
     download_dir = _download_dir()
     started_at = datetime.now().strftime("%H:%M:%S")
-    set_status("working", "ダウンロードしてるよ…ちょっと待ってて！", gigafile_url)
+    set_status("working", "ページを開いてるよ…", gigafile_url, progress=5)
     last_job_status = "⏳ ダウンロード実行中です..."
 
+    def _progress(pct: int, line: str, detail: str = "") -> None:
+        set_status("working", line, detail, progress=pct)
+
     try:
-        downloaded_files = await download_gigafile_url(gigafile_url, download_dir)
+        downloaded_files = await download_gigafile_url(
+            gigafile_url, download_dir, on_progress=_progress,
+        )
     except Exception as e:
         last_job_status = (
             f"❌ [{started_at}開始] ダウンロード処理でエラーが発生しました。\n"
@@ -45,7 +50,7 @@ async def run_download_pipeline(gigafile_url: str) -> str:
         return last_job_status
 
     file_names = [f["name"] for f in downloaded_files]
-    set_status("working", "シートに書いてるよ…", f"{len(file_names)} ファイル")
+    set_status("working", "シートに書いてるよ…", f"{len(file_names)} ファイル", progress=88)
     sheet_result = await write_files_to_sheet(downloaded_files)
     print(f"[hossy] シート転記: {sheet_result}")
 
@@ -59,7 +64,7 @@ async def run_download_pipeline(gigafile_url: str) -> str:
 
     premiere_folder = folder_from_downloaded_files(downloaded_files, download_dir)
     if premiere_folder:
-        set_status("working", "Premiere でシーケンス作ってるよ…", os.path.basename(premiere_folder))
+        set_status("working", "Premiere でシーケンス作ってるよ…", os.path.basename(premiere_folder), progress=95)
         try:
             premiere = prepare_premiere_project(premiere_folder)
             lines.append("")
