@@ -9,8 +9,11 @@ Dynamic Client Registration (DCR) を前提にしているため、これを実�
 しないとコネクタ登録自体が失敗する。
 """
 
+import json
+import os
 import secrets
 import time
+from pathlib import Path
 
 from mcp.server.auth.provider import (
     AccessToken,
@@ -23,6 +26,7 @@ from mcp.server.auth.provider import (
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
 ACCESS_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 30  # 30日（個人利用なので長めに設定）
+STATE_PATH = Path(os.path.expanduser("~/.config/hosshy/oauth_state.json"))
 
 
 class SingleUserOAuthProvider(OAuthAuthorizationServerProvider):
@@ -33,12 +37,44 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider):
         self.auth_codes: dict[str, AuthorizationCode] = {}
         self.access_tokens: dict[str, AccessToken] = {}
         self.refresh_tokens: dict[str, RefreshToken] = {}
+        self._load()
+
+    def _load(self) -> None:
+        try:
+            raw = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+        except FileNotFoundError:
+            return
+        except Exception as e:
+            print(f"[oauth] 保存データの読み込みに失敗: {e}")
+            return
+        for item in raw.get("clients", []):
+            client = OAuthClientInformationFull.model_validate(item)
+            if client.client_id:
+                self.clients[client.client_id] = client
+        for item in raw.get("access_tokens", []):
+            tok = AccessToken.model_validate(item)
+            self.access_tokens[tok.token] = tok
+        for item in raw.get("refresh_tokens", []):
+            tok = RefreshToken.model_validate(item)
+            self.refresh_tokens[tok.token] = tok
+
+    def _save(self) -> None:
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "clients": [c.model_dump(mode="json") for c in self.clients.values()],
+            "access_tokens": [t.model_dump(mode="json") for t in self.access_tokens.values()],
+            "refresh_tokens": [t.model_dump(mode="json") for t in self.refresh_tokens.values()],
+        }
+        tmp = STATE_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload), encoding="utf-8")
+        os.replace(tmp, STATE_PATH)
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
         return self.clients.get(client_id)
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         self.clients[client_info.client_id] = client_info
+        self._save()
 
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         code = secrets.token_urlsafe(32)
@@ -79,13 +115,15 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider):
             scopes=authorization_code.scopes,
         )
 
-        return OAuthToken(
+        token = OAuthToken(
             access_token=access_token,
             token_type="bearer",
             expires_in=ACCESS_TOKEN_TTL_SECONDS,
             refresh_token=refresh_token,
             scope=" ".join(authorization_code.scopes),
         )
+        self._save()
+        return token
 
     async def load_refresh_token(
         self, client: OAuthClientInformationFull, refresh_token: str
@@ -115,21 +153,25 @@ class SingleUserOAuthProvider(OAuthAuthorizationServerProvider):
             scopes=effective_scopes,
         )
 
-        return OAuthToken(
+        token = OAuthToken(
             access_token=access_token,
             token_type="bearer",
             expires_in=ACCESS_TOKEN_TTL_SECONDS,
             refresh_token=new_refresh_token,
             scope=" ".join(effective_scopes),
         )
+        self._save()
+        return token
 
     async def load_access_token(self, token: str) -> AccessToken | None:
         access_token = self.access_tokens.get(token)
         if access_token and access_token.expires_at and access_token.expires_at < time.time():
             self.access_tokens.pop(token, None)
+            self._save()
             return None
         return access_token
 
     async def revoke_token(self, token: AccessToken | RefreshToken) -> None:
         self.access_tokens.pop(token.token, None)
         self.refresh_tokens.pop(token.token, None)
+        self._save()
