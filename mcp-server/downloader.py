@@ -13,6 +13,20 @@ DOWNLOAD_BUTTON_SELECTOR = (
     "a:has-text('ダウンロード')"
 )
 
+AD_URL_RE = re.compile(
+    r"imobile|doubleclick|googlesyndication|googleadservices|adsystem|"
+    r"adnxs|criteo|ad-stir|microad|openx|adsrvr|taboola|outbrain|"
+    r"adtrafficquality|pagead2",
+    re.I,
+)
+
+CLOSE_BUTTON_SELECTOR = (
+    "button[aria-label='Close'], button[aria-label='close'], button[aria-label='閉じる'], "
+    "button[title='閉じる'], button[title='Close'], "
+    ".close, .btn-close, [class*='close-button'], [class*='ad-close'], "
+    "img[alt='close'], img[alt='閉じる'], img[alt='閉じるボタン']"
+)
+
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
 
 
@@ -31,6 +45,7 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(accept_downloads=True)
+        await context.route("**/*", _block_ad_request)
         page = await context.new_page()
 
         # ギガファイル便は広告・解析スクリプトのバックグラウンド通信が続くため
@@ -43,6 +58,8 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
         except PlaywrightTimeoutError:
             pass  # ボタンが見つからない場合は下のフォールバック検索に任せる
 
+        await _dismiss_ads(page)
+
         # ギガファイル便のダウンロードボタンを探す
         # 複数ファイルが含まれる場合を考慮して全ボタンを取得
         download_buttons = await page.query_selector_all(DOWNLOAD_BUTTON_SELECTOR)
@@ -53,8 +70,9 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
 
         for button in download_buttons:
             try:
+                await _dismiss_ads(page)
                 async with page.expect_download(timeout=120_000) as download_info:
-                    await button.click()
+                    await _click_download(button)
 
                 download: Download = await download_info.value
                 original_name = download.suggested_filename or f"file_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -82,6 +100,72 @@ async def download_gigafile_url(url: str, download_dir: str) -> list[dict]:
             print(f"[downloader] ボタン処理は失敗したが、新規ファイルを {len(downloaded)} 件検出したので転記対象にする")
 
     return _expand_archives(downloaded, download_dir)
+
+
+async def _block_ad_request(route) -> None:
+    url = route.request.url
+    if AD_URL_RE.search(url):
+        await route.abort()
+        return
+    await route.continue_()
+
+
+async def _dismiss_ads(page) -> None:
+    """オーバーレイ広告の閉じるボタンを押し、残った枠はDOMから外す。"""
+    for frame in page.frames:
+        try:
+            loc = frame.locator(CLOSE_BUTTON_SELECTOR)
+            n = await loc.count()
+        except Exception:
+            continue
+        for i in range(min(n, 8)):
+            try:
+                await loc.nth(i).click(timeout=800, force=True)
+            except Exception:
+                pass
+        try:
+            xs = frame.get_by_text("×", exact=True)
+            for i in range(min(await xs.count(), 6)):
+                await xs.nth(i).click(timeout=500, force=True)
+        except Exception:
+            pass
+
+    try:
+        removed = await page.evaluate(
+            """() => {
+              const kill = (el) => { try { el.remove(); return 1; } catch (e) { return 0; } };
+              let n = 0;
+              document.querySelectorAll(
+                '[id^="im-"], [id*="imobile"], [data-imobile-creative-width], [class*="imobile"]'
+              ).forEach((el) => { n += kill(el); });
+              document.querySelectorAll('iframe').forEach((el) => {
+                const src = (el.src || '') + (el.getAttribute('data-src') || '');
+                if (/imobile|doubleclick|googlesyndication|adsystem/i.test(src)) n += kill(el);
+              });
+              for (const el of document.querySelectorAll('div, aside, section, iframe')) {
+                const s = getComputedStyle(el);
+                const z = parseInt(s.zIndex, 10);
+                if ((s.position === 'fixed' || s.position === 'absolute') && z > 1000) {
+                  const r = el.getBoundingClientRect();
+                  if (r.width > 120 && r.height > 60) n += kill(el);
+                }
+              }
+              return n;
+            }"""
+        )
+        if removed:
+            print(f"[downloader] 広告オーバーレイを {removed} 件外した")
+    except Exception as e:
+        print(f"[downloader] 広告除去に失敗: {e}")
+
+
+async def _click_download(button) -> None:
+    try:
+        await button.click(force=True, timeout=8_000)
+        return
+    except Exception as e:
+        print(f"[downloader] 強制クリック失敗、DOM click に切替: {e}")
+    await button.evaluate("el => el.click()")
 
 
 def _files_added_since(download_dir: str, before: dict) -> list[dict]:
