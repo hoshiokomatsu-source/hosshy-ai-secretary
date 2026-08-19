@@ -40,12 +40,24 @@
     inset: 0;
     display: none;
   }
-  .idle .char-sleep { display: block; animation: sleep 3.6s ease-in-out infinite; }
-  .working.pose-laptop .char-work-a,
-  .working.pose-desk .char-work-b {
+  .idle.pose-sleep .char-sleep,
+  .idle.pose-done .char-done,
+  .wake .char-listen,
+  .working.pose-listen .char-listen,
+  .working.pose-link .char-link,
+  .working.pose-download .char-download,
+  .working.pose-files .char-files,
+  .working.pose-sheets .char-sheets,
+  .working.pose-premiere .char-premiere,
+  .working.pose-done .char-done {
     display: block;
+  }
+  .idle.pose-sleep .char-sleep { animation: sleep 3.6s ease-in-out infinite; }
+  .wake .char-listen,
+  .working .char {
     animation: work-bob 1.1s ease-in-out infinite;
   }
+  .idle.pose-done .char-done { animation: sleep 3.6s ease-in-out infinite; }
 
   @keyframes sleep {
     0%, 100% { transform: translateY(8px); }
@@ -102,11 +114,16 @@
 </style>
 </head>
 <body>
-<div class="stage idle" id="stage">
+<div class="stage idle pose-sleep" id="stage">
   <div class="char-wrap">
-    <img class="char char-sleep" src="/hosshy-sleep.png?v=9" alt="" />
-    <img class="char char-work-a" src="/hosshy-work.png?v=9" alt="" />
-    <img class="char char-work-b" src="/hosshy-work-desk.png?v=9" alt="" />
+    <img class="char char-sleep" src="/hosshy-pose-sleep.png?v=11" alt="" />
+    <img class="char char-listen" src="/hosshy-pose-listen.png?v=11" alt="" />
+    <img class="char char-link" src="/hosshy-pose-link.png?v=11" alt="" />
+    <img class="char char-download" src="/hosshy-pose-download.png?v=11" alt="" />
+    <img class="char char-files" src="/hosshy-pose-files.png?v=11" alt="" />
+    <img class="char char-sheets" src="/hosshy-pose-sheets.png?v=11" alt="" />
+    <img class="char char-premiere" src="/hosshy-pose-premiere.png?v=11" alt="" />
+    <img class="char char-done" src="/hosshy-pose-done.png?v=11" alt="" />
   </div>
   <div class="line" id="line">zzz…</div>
   <div class="meter" id="meter">
@@ -121,18 +138,29 @@ const lineEl = document.getElementById("line");
 const detailEl = document.getElementById("detail");
 const meterFill = document.getElementById("meterFill");
 const meterLabel = document.getElementById("meterLabel");
+const POSES = ["sleep", "listen", "link", "download", "files", "sheets", "premiere", "done"];
 
 function vis(state) {
-  return state === "working" ? "working" : "idle";
+  if (state === "working") return "working";
+  if (state === "wake") return "wake";
+  return "idle";
+}
+
+function normalizePose(state, pose) {
+  if (pose === "laptop") return "download";
+  if (pose === "desk") return "sheets";
+  if (state === "wake") return "listen";
+  if (POSES.includes(pose)) return pose;
+  return state === "idle" ? "sleep" : "download";
 }
 
 function apply(data) {
   const state = vis(data.state);
-  const pose = data.pose === "desk" ? "desk" : "laptop";
-  stage.className = "stage " + state + (state === "working" ? " pose-" + pose : "");
+  const pose = normalizePose(state, data.pose);
+  stage.className = "stage " + state + " pose-" + pose;
+  lineEl.textContent = data.line || (state === "idle" ? "zzz…" : "仕事してるよ…");
+  detailEl.textContent = data.detail || "";
   if (state === "working") {
-    lineEl.textContent = data.line || "仕事してるよ…";
-    detailEl.textContent = data.detail || "";
     if (data.progress == null || data.progress === "") {
       meterFill.style.width = "12%";
       meterLabel.textContent = "";
@@ -142,8 +170,6 @@ function apply(data) {
       meterLabel.textContent = Math.round(pct) + "%";
     }
   } else {
-    lineEl.textContent = "zzz…";
-    detailEl.textContent = "";
     meterFill.style.width = "0%";
     meterLabel.textContent = "";
   }

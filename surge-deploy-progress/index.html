@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ホッシーくん 開発進捗レポート — 2026.08.18</title>
+<title>ホッシーくん 開発進捗レポート — 2026.08.19</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -186,6 +186,129 @@
   .next-card .n-title { font-size: 13.5px; font-weight: 700; margin-top: 8px; }
   .next-card .n-desc { font-size: 12px; color: var(--text3); margin-top: 6px; line-height: 1.6; }
 
+  .prose { font-size: 13.5px; color: var(--text2); line-height: 1.75; max-width: 760px; }
+  .prose p { margin-bottom: 12px; }
+  .prose b { color: var(--text); font-weight: 600; }
+  .url-chip {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 8px 12px; word-break: break-all; color: var(--text);
+    margin: 8px 0 16px;
+  }
+  .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .compare-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 18px;
+  }
+  .compare-card.bad { border-color: rgba(248,113,113,.4); }
+  .compare-card.good { border-color: rgba(52,211,153,.4); }
+  .compare-kicker { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; margin-bottom: 6px; }
+  .compare-card.bad .compare-kicker { color: var(--red); }
+  .compare-card.good .compare-kicker { color: var(--green); }
+  .compare-card h3 { font-size: 14px; margin-bottom: 10px; }
+  .compare-card ul { margin: 0 0 0 16px; color: var(--text2); font-size: 12.5px; }
+  .compare-card li { margin: 4px 0; }
+  .flow-v { display: flex; flex-direction: column; align-items: stretch; gap: 0; margin: 16px 0; }
+  .flow-box {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 12.5px; text-align: center;
+  }
+  .flow-box .fb-title { font-weight: 700; color: var(--text); }
+  .flow-box .fb-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+  .flow-v .flow-arrow { text-align: center; color: var(--accent); font-size: 16px; padding: 4px 0; }
+  .roles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+  .role {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+  }
+  .role .r-name { font-size: 13px; font-weight: 700; }
+  .role .r-job { font-size: 12px; color: var(--text2); margin-top: 6px; line-height: 1.6; }
+  .callout {
+    background: var(--bg2); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0;
+    padding: 12px 16px; font-size: 13px; color: var(--text2); margin: 16px 0;
+  }
+  .callout b { color: var(--text); }
+
+  .diagram-note { font-size: 12px; color: var(--text3); margin: 0 0 10px; line-height: 1.7; }
+  .layers {
+    display: grid; grid-template-columns: 90px 1fr; gap: 8px 14px; align-items: stretch;
+    margin: 8px 0 22px;
+  }
+  .layer-tag {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .04em; color: var(--accent);
+    display: flex; align-items: center;
+  }
+  .layer-box {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    padding: 11px 14px;
+  }
+  .layer-box .lb-title { font-size: 13px; font-weight: 700; }
+  .layer-box .lb-sub { font-size: 11.5px; color: var(--text3); margin-top: 3px; line-height: 1.55; }
+  .layer-box.locked { border-color: rgba(52,211,153,.4); }
+  .layer-box.changes { border-color: rgba(248,113,113,.4); }
+
+  .split-urls { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 12px 0 22px; }
+  .url-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 14px;
+  }
+  .url-card .uc-label { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; margin-bottom: 8px; }
+  .url-card.old .uc-label { color: var(--red); }
+  .url-card.new .uc-label { color: var(--green); }
+  .url-card code {
+    display: block; font-size: 11.5px; word-break: break-all; line-height: 1.55;
+    color: var(--text);
+  }
+  .url-card .uc-hint { font-size: 11.5px; color: var(--text3); margin-top: 8px; line-height: 1.6; }
+
+  .path-row {
+    display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 10px 0 6px;
+  }
+  .path-node {
+    flex: 1 1 140px; min-width: 120px; background: var(--bg3);
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+  }
+  .path-node .pn-k { font-size: 10px; font-weight: 700; letter-spacing: .05em; color: var(--accent); }
+  .path-node .pn-t { font-size: 12.5px; font-weight: 700; margin-top: 4px; }
+  .path-node .pn-s { font-size: 11px; color: var(--text3); margin-top: 3px; line-height: 1.5; }
+  .path-node.fail { border-color: rgba(248,113,113,.45); }
+  .path-node.ok { border-color: rgba(52,211,153,.45); }
+  .pose-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .pose-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    text-align: center;
+  }
+  .pose-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background: #050505;
+    display: block;
+  }
+  .pose-card .p-idx {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--accent);
+    margin-top: 10px;
+  }
+  .pose-card .p-title {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 2px 10px 0;
+  }
+  .pose-card .p-desc {
+    font-size: 11.5px;
+    color: var(--text3);
+    padding: 4px 12px 14px;
+    line-height: 1.55;
+  }
+  .ui-pose-note { font-size: 12px; color: var(--text3); margin: 22px 0 10px; }
+
   footer { padding: 28px 40px; text-align: center; color: var(--text3); font-size: 11.5px; }
   footer a { color: var(--accent); text-decoration: none; }
 
@@ -195,6 +318,9 @@
     .bar-row { grid-template-columns: 1fr; gap: 6px; }
     .bar-pct { text-align: left; }
     .overall { gap: 24px; }
+    .compare-grid, .roles, .split-urls, .layers { grid-template-columns: 1fr; }
+    .layers { grid-template-columns: 1fr; }
+    .pose-grid { grid-template-columns: repeat(2, 1fr); }
   }
 </style>
 </head>
@@ -206,8 +332,8 @@
     <div class="hero-text">
       <div class="hero-tag">Progress Report</div>
       <h1>AI秘書「ホッシー<span>くん</span>」 開発進捗レポート</h1>
-      <div class="hero-sub">ギガファイル便のリンクを送るだけで動画DL〜編集準備までを自動化するプロジェクト。現在の実装状況と技術的な到達点をまとめた。</div>
-      <div class="hero-date">更新日: 2026年8月18日（初版: 2026年8月14日）</div>
+      <div class="hero-sub">出先のClaudeから自宅Macへ仕事を頼むAI秘書。2026年8月19日時点で、ダウンロード〜シート〜Premiereに加え、コネクタURLを <code style="color:var(--accent)">hossy.komatour.com</code> に固定した。</div>
+      <div class="hero-date">更新日: 2026年8月19日（初版: 2026年8月14日）</div>
     </div>
   </div>
 
@@ -238,14 +364,14 @@
         </div>
       </div>
       <div class="overall-legend">
-        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">Claude連携基盤（OAuth / MCP / Tunnel）</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">Claude連携基盤（OAuth / MCP / 固定Tunnel）</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">自動ダウンロード（ギガファイル便）</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">ファイル名解析・整理</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">スプレッドシート自動転記</span><span class="legend-weight">重み15%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">Premiere Pro自動化</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#34d399">100%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">キャラクターUI（React）</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">キャラクターUI</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#fbbf24"></span><span class="legend-name">音声起動（ウェイクワード）</span><span class="legend-weight">重み5%</span><span class="legend-val" style="color:#fbbf24">80%</span></div>
-        <div class="legend-note">テキスト経路は⑪まで完了。自宅ではホッシーくん画面＋「ホッシーくん！」で起きてリンクを貼れる。残りは本番シート切替と Tunnel 固定（ムームーにCNAME 1件）。</div>
+        <div class="legend-note">フェーズ1の作業経路は本番運用まで到達。コネクタは <b style="color:var(--text)">https://hossy.komatour.com/mcp</b> に固定。会話の頭脳はClaude、Macの手はホッシーくん。残りは画面上の会話と音声の本実装。</div>
       </div>
     </div>
   </section>
@@ -256,7 +382,7 @@
       <span class="section-num">02</span>
       <div>
         <div class="section-title">処理フロー（要件定義書 フェーズ1）の到達状況</div>
-        <div class="section-desc">①〜⑪はテキスト＋自宅ウェイクワードまで到達。残作業は運用の固定化</div>
+        <div class="section-desc">①〜⑪は本番経路まで到達。コネクタURLも固定済み</div>
       </div>
     </div>
     <div class="pipeline">
@@ -266,7 +392,7 @@
       <div class="step done"><div class="step-idx">④ </div><div class="step-title">ダウンロード完了検知</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑤ </div><div class="step-title">ファイル一覧取得</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑥ </div><div class="step-title">ファイル名解析（例: 32-1ド.mp4→32-1）</div><div class="step-badge">✓ 完了</div></div>
-      <div class="step done"><div class="step-idx">⑦ </div><div class="step-title">スプレッドシートに転記</div><div class="step-badge">✓ 完了（テストシート）</div></div>
+      <div class="step done"><div class="step-idx">⑦ </div><div class="step-title">スプレッドシートに転記</div><div class="step-badge">✓ 本番シート</div></div>
       <div class="step done"><div class="step-idx">⑧ </div><div class="step-title">Premiere Pro起動</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑨ </div><div class="step-title">既存ExtendScript実行</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑩ </div><div class="step-title">素材読み込み＆シーケンス作成</div><div class="step-badge">✓ 完了</div></div>
@@ -274,17 +400,108 @@
     </div>
   </section>
 
-  <!-- 3. コンポーネント別進捗 -->
+  <!-- 3. 工程ごとのホッシーくん -->
   <section>
     <div class="section-head">
       <span class="section-num">03</span>
+      <div>
+        <div class="section-title">工程ごとのホッシーくん</div>
+        <div class="section-desc">待つときは寝る。仕事に入ると、工程に合わせてポーズが変わる</div>
+      </div>
+    </div>
+    <div class="prose">
+      <p>画面のホッシーくんは、いま <b>寝る／ノートPC／デスク</b> の3種を切り替えています。発表用に、フェーズ1の全工程へポーズを割り当てて描き分けました。頭脳はClaude、手を動かしている顔がこの子です。</p>
+    </div>
+    <div class="pose-grid">
+      <div class="pose-card">
+        <img src="hosshy-pose-sleep.png" alt="待機中（寝ている）" />
+        <div class="p-idx">IDLE</div>
+        <div class="p-title">待機中</div>
+        <div class="p-desc">仕事が来るまで寝る。画面の「zzz…」と同じ状態</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-listen.png" alt="メッセージ受信" />
+        <div class="p-idx">①</div>
+        <div class="p-title">メッセージ受信</div>
+        <div class="p-desc">外出先のClaude（または画面）から呼びかけを聞く</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-link.png" alt="リンク検出" />
+        <div class="p-idx">②</div>
+        <div class="p-title">リンク検出</div>
+        <div class="p-desc">ギガファイル便のURLを見つけて、仕事開始の合図にする</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-download.png" alt="ダウンロード" />
+        <div class="p-idx">③ ④</div>
+        <div class="p-title">ダウンロード</div>
+        <div class="p-desc">まとめてダウンロードを押し、大きなZIPを自宅Macへ運ぶ</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-files.png" alt="ファイル整理" />
+        <div class="p-idx">⑤ ⑥</div>
+        <div class="p-title">一覧・名前解析</div>
+        <div class="p-desc">ZIPを名前付きフォルダへ展開し、1-1 のようなタイトルを読み取る</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-sheets.png" alt="スプレッドシート転記" />
+        <div class="p-idx">⑦</div>
+        <div class="p-title">シート転記</div>
+        <div class="p-desc">本番パートナーシートへ追記。納品日は直前行＋2日</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-premiere.png" alt="Premiere作業" />
+        <div class="p-idx">⑧ ⑨ ⑩</div>
+        <div class="p-title">Premiere</div>
+        <div class="p-desc">プロジェクト作成、素材読み込み、シーケンス作成まで一気に</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-done.png" alt="完了" />
+        <div class="p-idx">⑪</div>
+        <div class="p-title">保存して終了</div>
+        <div class="p-desc">編集できる状態まで整えてお辞儀。次の仕事を待つ</div>
+      </div>
+    </div>
+    <div class="ui-pose-note">下の4枚は初期の立ち絵と、画面で使っていた寝る／ノートPC／デスク。本番の画面は上の工程ポーズに切り替え済み。</div>
+    <div class="pose-grid">
+      <div class="pose-card">
+        <img src="hosshy-ui-sleep.png" alt="UI 寝る" />
+        <div class="p-idx">UI</div>
+        <div class="p-title">寝る</div>
+        <div class="p-desc">idle のとき</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-ui-laptop.png" alt="UI ノートPC" />
+        <div class="p-idx">UI</div>
+        <div class="p-title">ノートPC</div>
+        <div class="p-desc">working · laptop</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-ui-desk.png" alt="UI デスク" />
+        <div class="p-idx">UI</div>
+        <div class="p-title">デスク</div>
+        <div class="p-desc">working · desk</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-ui-stand.png" alt="立ち絵" />
+        <div class="p-idx">ORIGIN</div>
+        <div class="p-title">立ち絵</div>
+        <div class="p-desc">最初のキャラクター原画</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. コンポーネント別進捗 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">04</span>
       <div>
         <div class="section-title">コンポーネント別 進捗詳細</div>
       </div>
     </div>
     <div class="bars">
       <div class="bar-row">
-        <div class="bar-name">Claude連携基盤<div class="bar-sub">OAuth2.1 / Streamable HTTP / Cloudflare Tunnel</div></div>
+        <div class="bar-name">Claude連携基盤<div class="bar-sub">OAuth2.1 / Named Tunnel / hossy.komatour.com</div></div>
         <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
         <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
@@ -304,7 +521,7 @@
         <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
       <div class="bar-row">
-        <div class="bar-name">スプレッドシート連携<div class="bar-sub">Google Sheets API・テストシートへ実転記済み</div></div>
+        <div class="bar-name">スプレッドシート連携<div class="bar-sub">本番パートナーシートへ追記・納品日は前行＋2日</div></div>
         <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
         <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
@@ -326,10 +543,10 @@
     </div>
   </section>
 
-  <!-- 4. アーキテクチャ -->
+  <!-- 5. アーキテクチャ -->
   <section>
     <div class="section-head">
-      <span class="section-num">04</span>
+      <span class="section-num">05</span>
       <div>
         <div class="section-title">現在のシステム構成</div>
         <div class="section-desc">緑＝稼働中、点線＝未接続</div>
@@ -338,7 +555,7 @@
     <div class="arch">
       <div class="arch-node live"><div class="n-title">📱 Claude.ai</div><div class="n-sub">コネクタ経由・OAuth 2.1</div></div>
       <div class="arch-arrow">→</div>
-      <div class="arch-node live"><div class="n-title">☁️ Cloudflare Tunnel</div><div class="n-sub">Streamable HTTP (/mcp)</div></div>
+      <div class="arch-node live"><div class="n-title">☁️ Named Tunnel</div><div class="n-sub">hossy.komatour.com/mcp</div></div>
       <div class="arch-arrow">→</div>
       <div class="arch-col">
         <div class="arch-node live"><div class="n-title">💻 MacBook Air<br/>MCPサーバー</div><div class="n-sub">FastMCP / Playwright</div></div>
@@ -346,24 +563,173 @@
         <div class="arch-node live"><div class="n-title">🎬 ギガファイル便</div><div class="n-sub">自動DL・ZIP解凍・フォルダ整理</div></div>
       </div>
       <div class="arch-arrow">→</div>
-      <div class="arch-node live"><div class="n-title">📊 Google Sheets</div><div class="n-sub">テストシートへ自動転記</div></div>
+      <div class="arch-node live"><div class="n-title">📊 Google Sheets</div><div class="n-sub">本番パートナーシートへ転記</div></div>
       <div class="arch-arrow">→</div>
       <div class="arch-node live"><div class="n-title">🎞 Premiere Pro</div><div class="n-sub">シーケンス作成後に保存終了</div></div>
     </div>
+    <div class="callout" style="margin-top:20px;">
+      <b>役割の住み分け：</b> 会話して答えを出すのは Claude。ホッシーくんは自宅Macの手（ダウンロード・シート・Premiere・画面）。天気のような調べものは、道具を足すまでは Claude が答える。
+    </div>
   </section>
 
-  <!-- 5. 解決した課題 -->
+  <!-- 6. Tunnel 深掘り -->
   <section>
     <div class="section-head">
-      <span class="section-num">05</span>
+      <span class="section-num">06</span>
+      <div>
+        <div class="section-title">なぜドメインが必要だったか（Tunnel固定）</div>
+        <div class="section-desc">無料の仮トンネルの限界と、名前を持ったあとの経路</div>
+      </div>
+    </div>
+
+    <div class="prose">
+      <p>Claude.ai のカスタムコネクタは、<b>HTTPSの住所を1つ登録する</b>仕組みです。外出先のClaudeは、その住所を叩いて自宅Macのサーバー（ポート8000）に仕事を頼みます。家のルーターは外からの直通を受け付けないので、途中に Cloudflare Tunnel という「外の入口」を置いています。</p>
+      <p>今回やったのは、その入口に<b>自分のドメイン（看板）を付けた</b>ことです。トンネルそのものは前からありました。変わったのは「毎回借りる仮の住所」から「自分の名前」への切替です。</p>
+    </div>
+    <div class="url-chip">いまの登録先（固定）：https://hossy.komatour.com/mcp</div>
+
+    <div class="section-title" style="font-size:15px;margin:22px 0 8px;">3層に分けると分かりやすい</div>
+    <p class="diagram-note">Claudeが覚えているのは一番上の看板だけ。Macの再起動で張り直すのは一番下の接続。真ん中のトンネルIDは一度作れば同じ。</p>
+    <div class="layers">
+      <div class="layer-tag">看板</div>
+      <div class="layer-box locked">
+        <div class="lb-title">hossy.komatour.com</div>
+        <div class="lb-sub">人が読む名前。Claudeのコネクタに登録するURLはここ。ドメインを付けたあとは、ここが動かない。</div>
+      </div>
+      <div class="layer-tag">鍵</div>
+      <div class="layer-box locked">
+        <div class="lb-title">Named Tunnel ID　da3405ef-214b-4588-96be-91f4b361ee47</div>
+        <div class="lb-sub">Cloudflare側のトンネル本体。Macの cloudflared が「このIDです」と名乗り直す。UUIDは変わらない。</div>
+      </div>
+      <div class="layer-tag">実体</div>
+      <div class="layer-box">
+        <div class="lb-title">自宅Mac　localhost:8000</div>
+        <div class="lb-sub">実際のMCPサーバー。外からは見えない。トンネルが起きているあいだだけ、看板の向こうに現れる。</div>
+      </div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-card bad">
+        <div class="compare-kicker">BEFORE · Quick Tunnel（無料の仮名）</div>
+        <h3>毎回、別のリンクが発行される</h3>
+        <ul>
+          <li>起動のたびに <code>何か長い名前.trycloudflare.com</code> が新しく付く</li>
+          <li>Claude側は「最初に登録したURL」だけ覚える</li>
+          <li>Mac再起動・Tunnel再起動のたびにコネクタを削除して作り直し</li>
+          <li>OAuthもそのURLに紐づくので、住所が変わるとログインし直し</li>
+          <li>料金は無料だが、<b>名前を借りている時間が1回の起動分</b></li>
+        </ul>
+      </div>
+      <div class="compare-card good">
+        <div class="compare-kicker">AFTER · Named Tunnel + 自分のドメイン</div>
+        <h3>同じ名前を、ずっと使い続ける</h3>
+        <ul>
+          <li>入口の名前は常に <code>hossy.komatour.com</code></li>
+          <li>トンネル本体には一度きりのID（UUID）がある</li>
+          <li>Macが寝て起きても、同じIDでCloudflareに再接続する</li>
+          <li>DNSが「hossy = そのID」と案内するので、Claudeの登録は触らない</li>
+          <li>ドメインは既に持っていた <code>komatour.com</code> のサブドメイン</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="split-urls">
+      <div class="url-card old">
+        <div class="uc-label">仮トンネルの例（毎回違う）</div>
+        <code>https://mary-constitution-collected-records.trycloudflare.com/mcp</code>
+        <div class="uc-hint">左の長い英単語はCloudflareが勝手に付ける。再起動すると別の単語になる。Claudeは古い単語を探し続ける。</div>
+      </div>
+      <div class="url-card new">
+        <div class="uc-label">自分のドメイン（固定）</div>
+        <code>https://hossy.komatour.com/mcp</code>
+        <div class="uc-hint">hossy は自分で決めた部屋名。komatour.com はすでに持っていた家の名前。再起動しても看板は同じ。</div>
+      </div>
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">なぜ無料のままではいけなかったか</div>
+    <div class="prose">
+      <p>Quick Tunnel（<code>*.trycloudflare.com</code>）は、アカウントもドメインも不要で、すぐに外から届く入口が手に入ります。開発の最初にはこれで十分でした。問題は<b>入口の名前が資産にならない</b>ことです。</p>
+      <p>Claudeのコネクタは「このURLにだけ接続してよい」と覚えます。OAuthの許可もそのURLに紐づきます。仮トンネルは起動のたびに新しいURLを配るので、Macを再起動しただけで「前のコネクタは幽霊、新しいコネクタを作り直し」になります。発表や日常運用では、毎回リンクをコピーしてClaudeに貼り直す作業が発生します。</p>
+    </div>
+    <div class="flow-v">
+      <div class="flow-box"><div class="fb-title">Claude.ai</div><div class="fb-sub">コネクタに「https://ランダムA.trycloudflare.com/mcp」を登録</div></div>
+      <div class="flow-arrow">↓ 翌日、Tunnelを再起動</div>
+      <div class="flow-box"><div class="fb-title">Cloudflare が新しい仮名を発行</div><div class="fb-sub">https://ランダムB.trycloudflare.com　← 住所が別物</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box" style="border-color:rgba(248,113,113,.4);"><div class="fb-title">Claudeはまだ A を呼びに行く</div><div class="fb-sub">「再接続」しても古い住所なので失敗。削除して B で新規登録が必要</div></div>
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">ドメインがあると、なぜリンクを変えなくて済むか</div>
+    <div class="prose">
+      <p>自分のドメインは<b>ポインタ</b>です。Claudeはポインタ（hossy.komatour.com）だけを見ます。ポインタの先が「いま起きているトンネルID」を指しているので、Mac側が同じIDで再接続する限り、看板は動きません。</p>
+      <p>たとえが分かりやすいです。<b>Claudeが覚えているのはお店の看板、トンネルIDは倉庫の鍵</b>。仮トンネルでは看板ごと毎回作り直していました。自分のドメインでは看板を壁に固定し、鍵だけを使い回します。</p>
+    </div>
+    <div class="flow-v">
+      <div class="flow-box"><div class="fb-title">Claude.ai</div><div class="fb-sub">いつも https://hossy.komatour.com/mcp だけを見る</div></div>
+      <div class="flow-arrow">↓ 名前解決（DNS）</div>
+      <div class="flow-box"><div class="fb-title">hossy.komatour.com</div><div class="fb-sub">「この名前の実体は、トンネルID da3405ef-… です」と案内</div></div>
+      <div class="flow-arrow">↓</div>
+      <div class="flow-box"><div class="fb-title">Cloudflare エッジ → 自宅Mac</div><div class="fb-sub">同じIDで繋がっている Mac の localhost:8000 へ中継</div></div>
+      <div class="flow-arrow">↓ Macが再起動しても</div>
+      <div class="flow-box" style="border-color:rgba(52,211,153,.4);"><div class="fb-title">名前は同じ、中の接続だけ張り直す</div><div class="fb-sub">Claudeは同じURLのまま。コネクタの作り直しは不要</div></div>
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">CNAMEだけ足しても届かなかった理由</div>
+    <div class="prose">
+      <p>最初は「ムームーのDNSに CNAME 1件足すだけ。ネームサーバーは触らない」と考えました。名前の登記はムームーのまま、矢印だけトンネルIDに向けるつもりです。しかし Cloudflare Tunnel は、<b>自分のDNSゾーンにあるホスト名だけ</b>を公開入口（エニーキャストのAレコード＋証明書）にします。</p>
+      <p><code>uuid.cfargotunnel.com</code> 自体は、インターネット上の普通のウェブサイトではありません。公開Aレコードが無く、内側向けのアドレスしか見えませんでした。ムームー側で「hossy はこのUUIDです」と書いても、世界のブラウザは入口のIPに辿り着けません。</p>
+    </div>
+    <p class="diagram-note">失敗した経路（ネームサーバーはムームーのまま、CNAMEだけ追加）</p>
+    <div class="path-row">
+      <div class="path-node"><div class="pn-k">1</div><div class="pn-t">Claude</div><div class="pn-s">hossy.komatour.com を探す</div></div>
+      <span class="path-sep">→</span>
+      <div class="path-node"><div class="pn-k">2</div><div class="pn-t">ムームーDNS</div><div class="pn-s">CNAME → uuid.cfargotunnel.com</div></div>
+      <span class="path-sep">→</span>
+      <div class="path-node fail"><div class="pn-k">3</div><div class="pn-t">公開入口なし</div><div class="pn-s">Aレコードが無い。HTTPSまで届かない</div></div>
+    </div>
+    <p class="diagram-note" style="margin-top:18px;">成功した経路（案内係だけ Cloudflare へ。ドメインの名義はムームーのまま）</p>
+    <div class="path-row">
+      <div class="path-node ok"><div class="pn-k">1</div><div class="pn-t">Claude</div><div class="pn-s">同じ hossy.komatour.com</div></div>
+      <span class="path-sep">→</span>
+      <div class="path-node ok"><div class="pn-k">2</div><div class="pn-t">Cloudflare DNS</div><div class="pn-s">オレンジ雲（Proxied）の hossy</div></div>
+      <span class="path-sep">→</span>
+      <div class="path-node ok"><div class="pn-k">3</div><div class="pn-t">公開エッジ</div><div class="pn-s">世界共通の入口IP＋証明書を発行</div></div>
+      <span class="path-sep">→</span>
+      <div class="path-node ok"><div class="pn-k">4</div><div class="pn-t">自宅Mac</div><div class="pn-s">同じトンネルIDで中継</div></div>
+    </div>
+    <div class="callout" style="margin-top:18px;">
+      <b>ドメインを「移管」したわけではない。</b> ムームーのネームサーバー設定を「GMOペパボ以外」にし、<code>peaches.ns.cloudflare.com</code> / <code>rudy.ns.cloudflare.com</code> を書いただけ。komatour.com の持ち主は今もムームー。メールはロリポップのまま（MX = mx01.lolipop.jp、プロキシしない）。
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">3社の役割（ライバルではない）</div>
+    <div class="roles">
+      <div class="role">
+        <div class="r-name">ムームー</div>
+        <div class="r-job">ドメインの名義。komatour.com を買っている窓口。登記所に近い。ここを解約すると名前そのものが消える。</div>
+      </div>
+      <div class="role">
+        <div class="r-name">Cloudflare</div>
+        <div class="r-job">いまは名前の案内係＋トンネル。hossy という看板を自宅Macへつなぐ。証明書もここで発行。</div>
+      </div>
+      <div class="role">
+        <div class="r-name">ロリポップ</div>
+        <div class="r-job">メールとホームページの実体。MXは変更していないので、受信箱は従来どおり。</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. 解決した課題 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">07</span>
       <div>
         <div class="section-title">直近で解決した技術的課題</div>
-        <div class="section-desc">8/14の接続確立に続き、8/18に転記・ZIP整理まで到達</div>
+        <div class="section-desc">8/14の接続確立から、8/19の本番運用・ドメイン固定まで</div>
       </div>
     </div>
     <div class="timeline">
       <div class="t-item">
-        <div class="t-time">午後</div>
+        <div class="t-time">8/14午後</div>
         <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
         <div class="t-body">
           <div class="t-title">「MCPサーバーが見つからない」エラー</div>
@@ -372,7 +738,7 @@
         </div>
       </div>
       <div class="t-item">
-        <div class="t-time">夕方</div>
+        <div class="t-time">8/14夕</div>
         <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
         <div class="t-body">
           <div class="t-title">ダウンロード自体がタイムアウトする</div>
@@ -381,7 +747,7 @@
         </div>
       </div>
       <div class="t-item">
-        <div class="t-time">夜</div>
+        <div class="t-time">8/14夜</div>
         <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
         <div class="t-body">
           <div class="t-title">Macでは成功しているのにClaude側は「エラー」表示</div>
@@ -391,39 +757,66 @@
       </div>
       <div class="t-item">
         <div class="t-time">8/18夜</div>
-        <div class="t-line-wrap"><div class="t-dot"></div></div>
+        <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
         <div class="t-body">
           <div class="t-title">スマホから本番に近いZIPを送り、解凍〜シート転記まで確認</div>
-          <div class="t-cause">10GB級のZIPがActive直下に散らかる、転記がボタン失敗でスキップされる、Quick Tunnel再起動でURLが変わる</div>
-          <div class="t-fix"><b>対策：</b>ZIPは名前付きフォルダへ自動展開。保存済みファイルがあれば転記する。Tunnelとサーバーを別起動にしてコード修正で切れないようにした。固定ドメイン化は未着手</div>
+          <div class="t-cause">10GB級のZIPがActive直下に散らかる、転記がボタン失敗でスキップされる</div>
+          <div class="t-fix"><b>対策：</b>ZIPは名前付きフォルダへ自動展開。Tunnelとサーバーは別プロセスにして、コード修正でトンネルが切れないようにした</div>
+        </div>
+      </div>
+      <div class="t-item">
+        <div class="t-time">8/19昼</div>
+        <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
+        <div class="t-body">
+          <div class="t-title">広告でDLボタンが押せない／進捗バーが嘘になる／サーバー再起動でジョブが死ぬ</div>
+          <div class="t-cause">ギガファイル便の広告iframe、save_as中はページ％が動かない、kickstartで進行中DLが消える</div>
+          <div class="t-fix"><b>対策：</b>広告を閉じてからクリック。仕事中はサーバーを再起動しない。個別ボタンではなく「まとめてダウンロード」だけを押す仕様に変更</div>
+        </div>
+      </div>
+      <div class="t-item">
+        <div class="t-time">8/19夕</div>
+        <div class="t-line-wrap"><div class="t-dot"></div><div class="t-line"></div></div>
+        <div class="t-body">
+          <div class="t-title">本番シート転記とPremiereまで通し確認</div>
+          <div class="t-cause">お客さんの閲覧権限を上げたくない、タイトルが日付扱いで右詰め、納品日が＋7日になっていた</div>
+          <div class="t-fix"><b>対策：</b>サービスアカウントを編集者で追加（閲覧者はそのまま）。納品日は直前行＋2日。月タブは前月複製して計算式を残す。12本を本番へ転記しPremiereでシーケンス作成</div>
+        </div>
+      </div>
+      <div class="t-item">
+        <div class="t-time">8/19夜</div>
+        <div class="t-line-wrap"><div class="t-dot"></div></div>
+        <div class="t-body">
+          <div class="t-title">コネクタURLを hossy.komatour.com に固定</div>
+          <div class="t-cause">Quick Tunnelは再起動のたびにURLが変わる。CNAMEだけではCloudflareが入口を公開しなかった</div>
+          <div class="t-fix"><b>対策：</b>Named Tunnelを作成。案内係（ネームサーバー）だけCloudflareへ。MXはロリポップのまま。Claudeは https://hossy.komatour.com/mcp で接続済み</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 6. 次のステップ -->
+  <!-- 8. 次のステップ -->
   <section style="border-bottom:none;">
     <div class="section-head">
-      <span class="section-num">06</span>
+      <span class="section-num">08</span>
       <div>
         <div class="section-title">次のステップ</div>
       </div>
     </div>
     <div class="next-grid">
       <div class="next-card p1">
-        <div class="n-pri">PRIORITY 1</div>
-        <div class="n-title">本番シートへの切替</div>
-        <div class="n-desc">テストシートでの転記は確認済み。本番のパートナーシートURLを渡せば切替できる</div>
+        <div class="n-pri">NEXT</div>
+        <div class="n-title">画面で会話する</div>
+        <div class="n-desc">ホッシーくんの全画面UIから文字（のち音声）で質問し、返事が返る。頭脳はClaude、顔がホッシーくん</div>
       </div>
-      <div class="next-card p1">
-        <div class="n-pri">PRIORITY 1</div>
-        <div class="n-title">Tunnelの固定ドメイン化</div>
-        <div class="n-desc">ムームーDNSに CNAME 1件（hossy → cfargotunnel.com）。ネームサーバーは触らない。手順は docs/named-tunnel.md</div>
+      <div class="next-card p2">
+        <div class="n-pri">NEXT</div>
+        <div class="n-title">イヤホン前提の音声起こし</div>
+        <div class="n-desc">純正イヤホンでマイク精度が出た。フタ閉じ＋内蔵マイクの制約は残るが、声で起こす実装を再開できる</div>
       </div>
       <div class="next-card p3">
-        <div class="n-pri">LATER</div>
-        <div class="n-title">Porcupine 本実装</div>
-        <div class="n-desc">いまは画面のブラウザ音声認識。常時マイクの専用ウェイクワードは Picovoice キーが必要</div>
+        <div class="n-pri">PHASE 2</div>
+        <div class="n-title">天気などの秘書機能</div>
+        <div class="n-desc">調べものはClaude、Mac作業はホッシーくん、の分担のまま道具を足す</div>
       </div>
       <div class="next-card p3">
         <div class="n-pri">PHASE 2</div>
@@ -434,7 +827,7 @@
   </section>
 
   <footer>
-    ホッシーくん AI秘書プロジェクト &nbsp;·&nbsp; Progress Report updated 2026-08-18
+    ホッシーくん AI秘書プロジェクト &nbsp;·&nbsp; Progress Report updated 2026-08-19
   </footer>
 </div>
 

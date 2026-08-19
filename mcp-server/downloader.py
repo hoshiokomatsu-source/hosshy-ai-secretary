@@ -63,13 +63,9 @@ async def download_gigafile_url(url: str, download_dir: str, on_progress=None) -
 
             await _dismiss_ads(page)
 
-            # ギガファイル便のダウンロードボタンを探す
-            # 複数ファイルが含まれる場合を考慮して全ボタンを取得
-            download_buttons = await page.query_selector_all(DOWNLOAD_BUTTON_SELECTOR)
-
-            if not download_buttons:
-                # フォールバック: ページ内の全ダウンロードリンクを試す
-                download_buttons = await page.query_selector_all("[onclick*='download'], [href*='download']")
+            # 「まとめてダウンロード」があればそれ1つだけ。個別ボタンを全部押すと
+            # ZIPと中身が Active に二重に溜まる。
+            download_buttons = await _select_download_buttons(page)
 
             total = max(len(download_buttons), 1)
             await _attach_cdp_progress(page, on_progress)
@@ -113,6 +109,8 @@ async def download_gigafile_url(url: str, download_dir: str, on_progress=None) -
         if downloaded:
             print(f"[downloader] ボタン処理は失敗したが、新規ファイルを {len(downloaded)} 件検出したので転記対象にする")
 
+    if any(Path(f["path"]).suffix.lower() == ".zip" for f in downloaded):
+        _emit(on_progress, 80, "ZIPを解凍してるよ…", "")
     return _expand_archives(downloaded, download_dir)
 
 
@@ -226,6 +224,37 @@ async def _dismiss_ads(page) -> None:
             print(f"[downloader] 広告オーバーレイを {removed} 件外した")
     except Exception as e:
         print(f"[downloader] 広告除去に失敗: {e}")
+
+
+async def _select_download_buttons(page) -> list:
+    """まとめてダウンロードがあればそれだけ返す。なければ個別ボタン。"""
+    buttons = await page.query_selector_all(DOWNLOAD_BUTTON_SELECTOR)
+    if not buttons:
+        buttons = await page.query_selector_all("[onclick*='download'], [href*='download']")
+
+    bundle = []
+    others = []
+    for button in buttons:
+        label = await _button_label(button)
+        if "まとめて" in label:
+            bundle.append(button)
+        else:
+            others.append(button)
+
+    if bundle:
+        print("[downloader] 「まとめてダウンロード」があるので、それだけ押す")
+        return bundle[:1]
+    print(f"[downloader] まとめてボタンなし。個別ボタン {len(others)} 件")
+    return others
+
+
+async def _button_label(button) -> str:
+    try:
+        value = await button.get_attribute("value") or ""
+        text = await button.inner_text() or ""
+        return f"{value} {text}"
+    except Exception:
+        return ""
 
 
 async def _click_download(button) -> None:

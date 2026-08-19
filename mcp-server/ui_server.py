@@ -56,18 +56,12 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path in ("/", "/index.html"):
             self._file(UI_DIR / "index.html", "text/html; charset=utf-8")
             return
-        if parsed.path == "/hosshy.png":
-            self._file(UI_DIR / "hosshy.png", "image/png")
-            return
-        if parsed.path == "/hosshy-sleep.png":
-            self._file(UI_DIR / "hosshy-sleep.png", "image/png")
-            return
-        if parsed.path == "/hosshy-work.png":
-            self._file(UI_DIR / "hosshy-work.png", "image/png")
-            return
-        if parsed.path == "/hosshy-work-desk.png":
-            self._file(UI_DIR / "hosshy-work-desk.png", "image/png")
-            return
+        name = Path(parsed.path).name
+        if parsed.path.startswith("/hosshy") and name.endswith(".png"):
+            path = (UI_DIR / name).resolve()
+            if path.is_file() and path.parent == UI_DIR.resolve():
+                self._file(path, "image/png")
+                return
         if parsed.path == "/api/status":
             self._json(200, read_status())
             return
@@ -84,12 +78,12 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/wake":
-            set_status("wake", "お仕事なんでも欲しがり！リンクを貼って！", "")
+            set_status("wake", "お仕事なんでも欲しがり！リンクを貼って！", "", pose="listen")
             self._json(200, {"ok": True})
             return
 
         if parsed.path == "/api/idle":
-            set_status("idle", "zzz… ホッシーくん！って呼んでくれたら起きるよ", "")
+            set_status("idle", "zzz… ホッシーくん！って呼んでくれたら起きるよ", "", pose="sleep")
             self._json(200, {"ok": True})
             return
 
@@ -99,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._json(400, {"ok": False, "error": "ギガファイル便のURLを貼ってね"})
                 return
             pipeline.last_job_status = "⏳ ダウンロード実行中です..."
-            set_status("working", "ダウンロードしてるよ…ちょっと待ってて！", url)
+            set_status("working", "ダウンロードしてるよ…ちょっと待ってて！", url, pose="download")
             assert _loop is not None
             asyncio.run_coroutine_threadsafe(pipeline.run_download_pipeline(url), _loop)
             self._json(200, {"ok": True})
@@ -112,7 +106,7 @@ def main() -> None:
     if not (UI_DIR / "index.html").exists():
         raise SystemExit(f"UI が見つかりません: {UI_DIR}")
     threading.Thread(target=_start_loop, daemon=True).start()
-    set_status("idle", "zzz… ホッシーくん！って呼んでくれたら起きるよ", "")
+    set_status("idle", "zzz… ホッシーくん！って呼んでくれたら起きるよ", "", pose="sleep")
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"🦊 ホッシーくん画面: http://{HOST}:{PORT}")
     httpd.serve_forever()

@@ -95,7 +95,7 @@ async def download_and_record(gigafile_url: str) -> str:
         gigafile_url: ギガファイル便のURL（例: https://gigafile.nu/XXXXXXXX）
     """
     pipeline.last_job_status = "⏳ ダウンロード実行中です..."
-    set_status("working", "ダウンロードしてるよ…ちょっと待ってて！", gigafile_url)
+    set_status("working", "ダウンロードしてるよ…ちょっと待ってて！", gigafile_url, pose="download")
     task = asyncio.create_task(_run_download_and_record(gigafile_url))
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
@@ -142,7 +142,7 @@ async def prepare_premiere(folder_path: str = "") -> str:
     """
     try:
         folder = resolve_media_folder(folder_path or None, DOWNLOAD_DIR)
-        set_status("working", "Premiere でシーケンス作ってるよ…", folder)
+        set_status("working", "Premiere でシーケンス作ってるよ…", folder, pose="premiere")
         result = prepare_premiere_project(folder)
     except Exception as e:
         set_status("idle", "Premiere がうまくいかなかった…", str(e))

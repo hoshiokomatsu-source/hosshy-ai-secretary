@@ -23,7 +23,7 @@ async def run_download_pipeline(gigafile_url: str) -> str:
     global last_job_status
     download_dir = _download_dir()
     started_at = datetime.now().strftime("%H:%M:%S")
-    set_status("working", "ページを開いてるよ…", gigafile_url, progress=5)
+    set_status("working", "ページを開いてるよ…", gigafile_url, progress=5, pose="link")
     last_job_status = "⏳ ダウンロード実行中です..."
 
     def _progress(pct: int, line: str, detail: str = "") -> None:
@@ -39,18 +39,18 @@ async def run_download_pipeline(gigafile_url: str) -> str:
             f"詳細: {type(e).__name__}: {e}\n"
             "URLの有効期限やギガファイル便側の混雑状況を確認し、もう一度試してください。"
         )
-        set_status("idle", "うまくいかなかった…もう一回リンクを送って！", str(e))
+        set_status("idle", "うまくいかなかった…もう一回リンクを送って！", str(e), pose="sleep")
         return last_job_status
 
     print(f"[hossy] ダウンロード結果: {len(downloaded_files)} 件 {[f.get('name') for f in downloaded_files]}")
     if not downloaded_files:
         last_job_status = f"[{started_at}開始] ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"
         print("[hossy] ファイル0件のためシート転記をスキップしました")
-        set_status("idle", "ファイルが見つからなかったよ。URLを確認して！", "")
+        set_status("idle", "ファイルが見つからなかったよ。URLを確認して！", "", pose="sleep")
         return last_job_status
 
     file_names = [f["name"] for f in downloaded_files]
-    set_status("working", "シートに書いてるよ…", f"{len(file_names)} ファイル", progress=88)
+    set_status("working", "シートに書いてるよ…", f"{len(file_names)} ファイル", progress=88, pose="sheets")
     sheet_result = await write_files_to_sheet(downloaded_files)
     print(f"[hossy] シート転記: {sheet_result}")
 
@@ -64,7 +64,7 @@ async def run_download_pipeline(gigafile_url: str) -> str:
 
     premiere_folder = folder_from_downloaded_files(downloaded_files, download_dir)
     if premiere_folder:
-        set_status("working", "Premiere でシーケンス作ってるよ…", os.path.basename(premiere_folder), progress=95)
+        set_status("working", "Premiere でシーケンス作ってるよ…", os.path.basename(premiere_folder), progress=95, pose="premiere")
         try:
             premiere = prepare_premiere_project(premiere_folder)
             lines.append("")
@@ -74,5 +74,5 @@ async def run_download_pipeline(gigafile_url: str) -> str:
             lines.append(f"🎬 Premiere: 自動セットアップに失敗しました（{type(e).__name__}: {e}）")
 
     last_job_status = "\n".join(lines)
-    set_status("idle", "zzz…", "")
+    set_status("idle", "お仕事終わったよ！また呼んでね", "", pose="done")
     return last_job_status
