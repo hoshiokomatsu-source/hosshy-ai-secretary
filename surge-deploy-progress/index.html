@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ホッシーくん 開発進捗レポート — 2026.08.19</title>
+<title>ホッシーくん 開発進捗レポート — 2026.08.23</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -308,6 +308,73 @@
     line-height: 1.55;
   }
   .ui-pose-note { font-size: 12px; color: var(--text3); margin: 22px 0 10px; }
+  .shot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 0 0 28px;
+  }
+  .shot-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .shot-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    object-position: top;
+    display: block;
+    background: #050505;
+  }
+  .shot-card .s-idx {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--accent);
+    padding: 10px 12px 0;
+  }
+  .shot-card .s-title {
+    font-size: 13px;
+    font-weight: 700;
+    padding: 2px 12px 12px;
+  }
+  .preface {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.75;
+    margin-top: 16px;
+    max-width: 720px;
+  }
+  .preface b { color: var(--text); font-weight: 600; }
+  .scene-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 8px 0 8px;
+  }
+  .scene-card img {
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    background: #111;
+  }
+  .scene-card .scene-cap {
+    padding: 12px 16px 14px;
+    font-size: 13px;
+    color: var(--text2);
+    line-height: 1.65;
+  }
+  .scene-card .scene-cap b { color: var(--text); }
 
   footer { padding: 28px 40px; text-align: center; color: var(--text3); font-size: 11.5px; }
   footer a { color: var(--accent); text-decoration: none; }
@@ -321,6 +388,7 @@
     .compare-grid, .roles, .split-urls, .layers { grid-template-columns: 1fr; }
     .layers { grid-template-columns: 1fr; }
     .pose-grid { grid-template-columns: repeat(2, 1fr); }
+    .shot-grid { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -330,10 +398,12 @@
   <!-- HERO -->
   <div class="hero">
     <div class="hero-text">
-      <div class="hero-tag">Progress Report</div>
-      <h1>AI秘書「ホッシー<span>くん</span>」 開発進捗レポート</h1>
-      <div class="hero-sub">出先のClaudeから自宅Macへ仕事を頼むAI秘書。2026年8月19日時点で、ダウンロード〜シート〜Premiereに加え、コネクタURLを <code style="color:var(--accent)">hossy.komatour.com</code> に固定した。</div>
-      <div class="hero-date">更新日: 2026年8月19日（初版: 2026年8月14日）</div>
+      <div class="hero-tag">Usage & Progress</div>
+      <h1>AI秘書「ホッシー<span>くん</span>」<br>システムの使い方 兼 進捗レポート</h1>
+      <div class="preface">
+        図解を作る前は、ここを<b>自分用の進捗レポート</b>として使っていました。開発の途中経過を残すためのページです。いまはシステムの使い方も同じ場所で見せるので、<b>その進捗レポートを流用しています</b>。入力はClaudeのチャット。コネクタは <code style="color:var(--accent)">hossy.■■■■■■.com</code> です。
+      </div>
+      <div class="hero-date">更新日: 2026年8月25日（初版: 2026年8月14日）</div>
     </div>
   </div>
 
@@ -343,7 +413,7 @@
       <span class="section-num">01</span>
       <div>
         <div class="section-title">全体進捗</div>
-        <div class="section-desc">要件定義書（フェーズ1）の全機能を100%として、コンポーネントの重要度で加重平均した進捗率</div>
+        <div class="section-desc">要件定義書フェーズ1。入力はClaudeチャット。音声起動は作らないことにしたので、対象外</div>
       </div>
     </div>
     <div class="overall">
@@ -369,24 +439,105 @@
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">ファイル名解析・整理</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">スプレッドシート自動転記</span><span class="legend-weight">重み15%</span><span class="legend-val" style="color:#34d399">100%</span></div>
         <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">Premiere Pro自動化</span><span class="legend-weight">重み25%</span><span class="legend-val" style="color:#34d399">100%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">キャラクターUI</span><span class="legend-weight">重み10%</span><span class="legend-val" style="color:#34d399">100%</span></div>
-        <div class="legend-row"><span class="legend-dot" style="background:#fbbf24"></span><span class="legend-name">音声起動（ウェイクワード）</span><span class="legend-weight">重み5%</span><span class="legend-val" style="color:#fbbf24">80%</span></div>
-        <div class="legend-note">フェーズ1の作業経路は本番運用まで到達。コネクタは <b style="color:var(--text)">https://hossy.komatour.com/mcp</b> に固定。会話の頭脳はClaude、Macの手はホッシーくん。残りは画面上の会話と音声の本実装。</div>
+        <div class="legend-row"><span class="legend-dot" style="background:#4f93e8"></span><span class="legend-name">キャラクターUI</span><span class="legend-weight">重み15%</span><span class="legend-val" style="color:#34d399">100%</span></div>
+        <div class="legend-note">フェーズ1は完了。入力は外出先・自宅とも <b style="color:var(--text)">Claudeのチャット</b>。音声起動は必要ないので外した。コネクタは <b style="color:var(--text)">https://hossy.■■■■■■.com/mcp</b>。</div>
       </div>
     </div>
   </section>
 
-  <!-- 2. パイプライン進捗 -->
+  <!-- 導入前：イラスト＋実画面 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">SCENE</span>
+      <div>
+        <div class="section-title">導入前の面倒。当時の作業と、実際の画面</div>
+        <div class="section-desc">出かける直前や出先でリンクが来ると、帰宅するまで何も始められない。下が、毎回やっていた実画面</div>
+      </div>
+    </div>
+    <div class="scene-card">
+      <img src="scene-before-leave-empty.png" alt="出かける直前、デスクは空のまま、リンクだけが来る場面" />
+      <div class="scene-cap">1. 出かける直前や出先でリンクを受け取ると、帰宅するまで一切作業ができない。<b>そのモヤモヤ。</b></div>
+    </div>
+    <div class="scene-card">
+      <img src="scene-before-sheets.png" alt="デュアルディスプレイでファイルをシートに転記している場面" />
+      <div class="scene-cap">2. ダウンロード後の工程として、毎回、Finderから名前をコピーして、シートへ手で貼る。同じ作業のくり返し。<b>「Macが自動でやってくれないかな…」</b></div>
+    </div>
+    <div class="scene-card">
+      <img src="scene-before-premiere.png" alt="Premiereで動画をシーケンスに並べている場面" />
+      <div class="scene-cap">3. ダウンロード後の工程として、またPremiereを開いて、同じようにシーケンスへ手で並べる。くり返し。</div>
+    </div>
+    <div class="scene-card">
+      <img src="scene-after-home.png" alt="帰宅して、さあ編集するぞという場面" />
+      <div class="scene-cap">4. だから、<b>帰宅したらすぐ編集が始められる環境構築をしたかった。</b></div>
+    </div>
+    <div class="section-title" style="font-size:15px;margin:28px 0 12px;">これが、実際の画面</div>
+    <div class="shot-grid">
+      <div class="shot-card">
+        <img src="shot-gigafile.png" alt="ギガファイル便" />
+        <div class="s-idx">1</div>
+        <div class="s-title">ギガファイル便 — ここからリンクが来る</div>
+      </div>
+      <div class="shot-card">
+        <img src="shot-files.png" alt="ダウンロード後の動画ファイル" />
+        <div class="s-idx">2</div>
+        <div class="s-title">ダウンロード後 — Finderからフォルダ名をコピーする</div>
+      </div>
+      <div class="shot-card">
+        <img src="shot-sheets.png" alt="スプレッドシート転記" />
+        <div class="s-idx">3</div>
+        <div class="s-title">ダウンロード後の工程として — コピーしたタイトルを、スプレッドシートにペーストして転記する</div>
+      </div>
+      <div class="shot-card">
+        <img src="shot-premiere.png" alt="Premiereの画面" />
+        <div class="s-idx">4</div>
+        <div class="s-title">ダウンロード後の工程として — Premiereでシーケンス（タイムライン）を作成する</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 作ったもの -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">MADE</span>
+      <div>
+        <div class="section-title">作ったもの</div>
+        <div class="section-desc">AI秘書 ホッシーくん</div>
+      </div>
+    </div>
+    <div class="prose">
+      <p>作ったのは、<b>AI秘書「ホッシーくん」</b>です。チャットにリンクを送ると、自宅のMacがダウンロード・整理・シート転記・シーケンス作成までやります。</p>
+    </div>
+    <div class="pose-grid" style="grid-template-columns:repeat(4,1fr);margin-top:16px;">
+      <div class="pose-card">
+        <img src="hosshy-pose-sleep.png" alt="待機" />
+        <div class="p-title">待機</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-download.png" alt="ダウンロード" />
+        <div class="p-title">ダウンロード</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-sheets.png" alt="シート転記" />
+        <div class="p-title">転記</div>
+      </div>
+      <div class="pose-card">
+        <img src="hosshy-pose-premiere.png" alt="Premiere" />
+        <div class="p-title">シーケンス（タイムライン作成）</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 処理フロー -->
   <section>
     <div class="section-head">
       <span class="section-num">02</span>
       <div>
         <div class="section-title">処理フロー（要件定義書 フェーズ1）の到達状況</div>
-        <div class="section-desc">①〜⑪は本番経路まで到達。コネクタURLも固定済み</div>
+        <div class="section-desc">①〜⑪は本番経路まで到達。③以降は、自宅Mac内の Python が動かす</div>
       </div>
     </div>
     <div class="pipeline">
-      <div class="step done"><div class="step-idx">① </div><div class="step-title">メッセージ受信（音声 / テキスト）</div><div class="step-badge">✓ テキスト＋ウェイクワード</div></div>
+      <div class="step done"><div class="step-idx">① </div><div class="step-title">メッセージ受信（Claudeチャット）</div><div class="step-badge">✓ チャット</div></div>
       <div class="step done"><div class="step-idx">② </div><div class="step-title">ギガファイル便リンク検出</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">③ </div><div class="step-title">自動ダウンロード開始</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">④ </div><div class="step-title">ダウンロード完了検知</div><div class="step-badge">✓ 完了</div></div>
@@ -397,6 +548,23 @@
       <div class="step done"><div class="step-idx">⑨ </div><div class="step-title">既存ExtendScript実行</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑩ </div><div class="step-title">素材読み込み＆シーケンス作成</div><div class="step-badge">✓ 完了</div></div>
       <div class="step done"><div class="step-idx">⑪ </div><div class="step-title">編集可能状態で待機</div><div class="step-badge">✓ 保存して終了</div></div>
+    </div>
+    <div class="callout" style="margin-top:20px;">
+      <b>ここがポイント：</b> ①②は Claude のチャット。③のダウンロードから⑪まで、基本的に<b>自宅Macの中で Python プログラム</b>が動いている。転記も Premiere も、Claude が工程ごとに指示しているわけではない。窓口が1回受け取ったあと、Mac上の Python が続けて手を動かす。
+    </div>
+  </section>
+
+  <!-- 理由 -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">WHY</span>
+      <div>
+        <div class="section-title">作りたいと思った理由</div>
+        <div class="section-desc">単純作業はAIに任せる</div>
+      </div>
+    </div>
+    <div class="prose">
+      <p>単純作業はAIに任せて、自分は<b>編集や企画、制作など、クリエイティブな作業に没頭したかった</b>からです。コピーして、貼って、並べる仕事は、毎回同じです。考える仕事の前に、手だけが疲れていました。</p>
     </div>
   </section>
 
@@ -501,7 +669,7 @@
     </div>
     <div class="bars">
       <div class="bar-row">
-        <div class="bar-name">Claude連携基盤<div class="bar-sub">OAuth2.1 / Named Tunnel / hossy.komatour.com</div></div>
+        <div class="bar-name">Claude連携基盤<div class="bar-sub">OAuth2.1 / Named Tunnel / hossy.■■■■■■.com</div></div>
         <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
         <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
@@ -535,11 +703,6 @@
         <div class="bar-track"><div class="bar-fill" data-w="100" style="background:linear-gradient(90deg,#4f93e8,#34d399)"></div></div>
         <div class="bar-pct" style="color:#34d399">100%</div>
       </div>
-      <div class="bar-row">
-        <div class="bar-name">音声起動<div class="bar-sub">ブラウザ音声認識で「ホッシーくん！」</div></div>
-        <div class="bar-track"><div class="bar-fill" data-w="80" style="background:#fbbf24"></div></div>
-        <div class="bar-pct" style="color:#fbbf24">80%</div>
-      </div>
     </div>
   </section>
 
@@ -549,13 +712,13 @@
       <span class="section-num">05</span>
       <div>
         <div class="section-title">現在のシステム構成</div>
-        <div class="section-desc">緑＝稼働中、点線＝未接続</div>
+        <div class="section-desc">入力はClaudeチャット。緑＝稼働中</div>
       </div>
     </div>
     <div class="arch">
       <div class="arch-node live"><div class="n-title">📱 Claude.ai</div><div class="n-sub">コネクタ経由・OAuth 2.1</div></div>
       <div class="arch-arrow">→</div>
-      <div class="arch-node live"><div class="n-title">☁️ Named Tunnel</div><div class="n-sub">hossy.komatour.com/mcp</div></div>
+      <div class="arch-node live"><div class="n-title">☁️ Named Tunnel</div><div class="n-sub">hossy.■■■■■■.com/mcp</div></div>
       <div class="arch-arrow">→</div>
       <div class="arch-col">
         <div class="arch-node live"><div class="n-title">💻 MacBook Air<br/>MCPサーバー</div><div class="n-sub">FastMCP / Playwright</div></div>
@@ -570,6 +733,60 @@
     <div class="callout" style="margin-top:20px;">
       <b>役割の住み分け：</b> 会話して答えを出すのは Claude。ホッシーくんは自宅Macの手（ダウンロード・シート・Premiere・画面）。天気のような調べものは、道具を足すまでは Claude が答える。
     </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">どうやって動くか</div>
+    <div class="prose">
+      <p>チャットは <b>Claude AIのスマホアプリ</b>。ホシさんがリンクを送ると、Claude がダウンロードの指示を出す。自宅Macに置いた <b>MCPサーバー</b>がその窓口。中身は <b>Python プログラム</b>。</p>
+      <p>転記も Premiere のシーケンス作成も、Claude が別指示を出しているわけではない。MCP が1回仕事を受け取ったあと、Mac上の Python が続けて手を動かす。</p>
+    </div>
+    <div class="scene-card">
+      <img src="scene-claude-phone.png" alt="Claude AIのスマホアプリにリンクを送る" />
+      <div class="scene-cap">チャット＝Claude AIのスマホアプリ。外出先から、ここにリンクを送る。</div>
+    </div>
+    <div class="scene-card">
+      <img src="diagram-mcp.png" alt="ClaudeからMCPサーバー経由で自宅Macへ" />
+      <div class="scene-cap">スマホのClaude → MCPサーバー（窓口）→ 自宅のMac。窓口を通ると、Macが手を動かす。</div>
+    </div>
+  </section>
+
+  <!-- 工夫：トンネル（06の直前） -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">IDEA</span>
+      <div>
+        <div class="section-title">工夫したポイント。外と家をつなぐトンネル</div>
+        <div class="section-desc">Cloudflareで掘った穴。住所を固定して、Claudeが同じ宛先のまま届くようにした</div>
+      </div>
+    </div>
+    <div class="prose">
+      <p>いちばん苦戦したのは、外のClaudeを自宅Macへつなぐことでした。使った道具は <b>Cloudflare</b>。それがトンネル（あいだに掘った穴）です。</p>
+    </div>
+    <div class="scene-card">
+      <img src="diagram-tunnel-1.png" alt="外のスマホと家をつなぐトンネル" />
+      <div class="scene-cap">1. チャットのお願いが、トンネルを通って家に届く。</div>
+    </div>
+    <div class="scene-card">
+      <img src="diagram-tunnel-2.png" alt="トンネルの先は自分のMacだけ" />
+      <div class="scene-cap">2. 隣の家には届かない。届くのは<b>自分の家のMacだけ</b>。</div>
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">トンネルだけだと、届き先がわからない</div>
+    <div class="prose">
+      <p>Claudeは「どこに頼めばいいか」が必要です。その届き先を、ここでは<b>住所</b>と呼ぶ。住所＝Claudeが家のMacを探すための宛先（URL）。</p>
+    </div>
+    <div class="scene-card">
+      <img src="diagram-address.png" alt="住所はClaudeがMacを探す宛先" />
+      <div class="scene-cap">住所＝宛先のURL。手紙の宛名と同じで、穴があっても住所がないと届かない。</div>
+    </div>
+
+    <div class="section-title" style="font-size:15px;margin:28px 0 8px;">無料と有料のちがい</div>
+    <div class="prose">
+      <p>無料だと、Macを切るたびに住所が変わる。Claudeへ毎回「新しい住所です」と教え直す必要があった。だからドメインで住所を固定した。</p>
+    </div>
+    <div class="scene-card">
+      <img src="diagram-address-change.png" alt="無料は住所が変わり、固定すると同じ住所のまま" />
+      <div class="scene-cap">左：無料。切るたびに別の住所。右：有料ドメイン。一つの住所のまま届く。</div>
+    </div>
   </section>
 
   <!-- 6. Tunnel 深掘り -->
@@ -578,27 +795,27 @@
       <span class="section-num">06</span>
       <div>
         <div class="section-title">なぜドメインが必要だったか（Tunnel固定）</div>
-        <div class="section-desc">無料の仮トンネルの限界と、名前を持ったあとの経路</div>
+        <div class="section-desc">無料だと住所が変わる。固定すると、Claudeは同じ宛先のままで済む</div>
       </div>
     </div>
 
     <div class="prose">
       <p>Claude.ai のカスタムコネクタは、<b>HTTPSの住所を1つ登録する</b>仕組みです。外出先のClaudeは、その住所を叩いて自宅Macのサーバー（ポート8000）に仕事を頼みます。家のルーターは外からの直通を受け付けないので、途中に Cloudflare Tunnel という「外の入口」を置いています。</p>
-      <p>今回やったのは、その入口に<b>自分のドメイン（看板）を付けた</b>ことです。トンネルそのものは前からありました。変わったのは「毎回借りる仮の住所」から「自分の名前」への切替です。</p>
+      <p>今回やったのは、その入口の<b>住所を固定した</b>ことです。トンネルそのものは前からありました。変わったのは「毎回借りる仮の住所」から「ずっと同じ住所」への切替です。</p>
     </div>
-    <div class="url-chip">いまの登録先（固定）：https://hossy.komatour.com/mcp</div>
+    <div class="url-chip">いまの登録先（固定）：https://hossy.■■■■■■.com/mcp</div>
 
     <div class="section-title" style="font-size:15px;margin:22px 0 8px;">3層に分けると分かりやすい</div>
     <p class="diagram-note">Claudeが覚えているのは一番上の看板だけ。Macの再起動で張り直すのは一番下の接続。真ん中のトンネルIDは一度作れば同じ。</p>
     <div class="layers">
       <div class="layer-tag">看板</div>
       <div class="layer-box locked">
-        <div class="lb-title">hossy.komatour.com</div>
+        <div class="lb-title">hossy.■■■■■■.com</div>
         <div class="lb-sub">人が読む名前。Claudeのコネクタに登録するURLはここ。ドメインを付けたあとは、ここが動かない。</div>
       </div>
       <div class="layer-tag">鍵</div>
       <div class="layer-box locked">
-        <div class="lb-title">Named Tunnel ID　da3405ef-214b-4588-96be-91f4b361ee47</div>
+        <div class="lb-title">Named Tunnel ID　■■■■■■■■-■■■■-■■■■-■■■■-■■■■■■■■■■■■</div>
         <div class="lb-sub">Cloudflare側のトンネル本体。Macの cloudflared が「このIDです」と名乗り直す。UUIDは変わらない。</div>
       </div>
       <div class="layer-tag">実体</div>
@@ -624,11 +841,11 @@
         <div class="compare-kicker">AFTER · Named Tunnel + 自分のドメイン</div>
         <h3>同じ名前を、ずっと使い続ける</h3>
         <ul>
-          <li>入口の名前は常に <code>hossy.komatour.com</code></li>
+          <li>入口の名前は常に <code>hossy.■■■■■■.com</code></li>
           <li>トンネル本体には一度きりのID（UUID）がある</li>
           <li>Macが寝て起きても、同じIDでCloudflareに再接続する</li>
           <li>DNSが「hossy = そのID」と案内するので、Claudeの登録は触らない</li>
-          <li>ドメインは既に持っていた <code>komatour.com</code> のサブドメイン</li>
+          <li>ドメインは既に持っていた <code>■■■■■■.com</code> のサブドメイン</li>
         </ul>
       </div>
     </div>
@@ -641,8 +858,8 @@
       </div>
       <div class="url-card new">
         <div class="uc-label">自分のドメイン（固定）</div>
-        <code>https://hossy.komatour.com/mcp</code>
-        <div class="uc-hint">hossy は自分で決めた部屋名。komatour.com はすでに持っていた家の名前。再起動しても看板は同じ。</div>
+        <code>https://hossy.■■■■■■.com/mcp</code>
+        <div class="uc-hint">hossy は自分で決めた部屋名。■■■■■■.com はすでに持っていた家の名前。再起動しても看板は同じ。</div>
       </div>
     </div>
 
@@ -661,13 +878,13 @@
 
     <div class="section-title" style="font-size:15px;margin:28px 0 8px;">ドメインがあると、なぜリンクを変えなくて済むか</div>
     <div class="prose">
-      <p>自分のドメインは<b>ポインタ</b>です。Claudeはポインタ（hossy.komatour.com）だけを見ます。ポインタの先が「いま起きているトンネルID」を指しているので、Mac側が同じIDで再接続する限り、看板は動きません。</p>
+      <p>自分のドメインは<b>ポインタ</b>です。Claudeはポインタ（hossy.■■■■■■.com）だけを見ます。ポインタの先が「いま起きているトンネルID」を指しているので、Mac側が同じIDで再接続する限り、看板は動きません。</p>
       <p>たとえが分かりやすいです。<b>Claudeが覚えているのはお店の看板、トンネルIDは倉庫の鍵</b>。仮トンネルでは看板ごと毎回作り直していました。自分のドメインでは看板を壁に固定し、鍵だけを使い回します。</p>
     </div>
     <div class="flow-v">
-      <div class="flow-box"><div class="fb-title">Claude.ai</div><div class="fb-sub">いつも https://hossy.komatour.com/mcp だけを見る</div></div>
+      <div class="flow-box"><div class="fb-title">Claude.ai</div><div class="fb-sub">いつも https://hossy.■■■■■■.com/mcp だけを見る</div></div>
       <div class="flow-arrow">↓ 名前解決（DNS）</div>
-      <div class="flow-box"><div class="fb-title">hossy.komatour.com</div><div class="fb-sub">「この名前の実体は、トンネルID da3405ef-… です」と案内</div></div>
+      <div class="flow-box"><div class="fb-title">hossy.■■■■■■.com</div><div class="fb-sub">「この名前の実体は、トンネルID ■■■■-… です」と案内</div></div>
       <div class="flow-arrow">↓</div>
       <div class="flow-box"><div class="fb-title">Cloudflare エッジ → 自宅Mac</div><div class="fb-sub">同じIDで繋がっている Mac の localhost:8000 へ中継</div></div>
       <div class="flow-arrow">↓ Macが再起動しても</div>
@@ -681,7 +898,7 @@
     </div>
     <p class="diagram-note">失敗した経路（ネームサーバーはムームーのまま、CNAMEだけ追加）</p>
     <div class="path-row">
-      <div class="path-node"><div class="pn-k">1</div><div class="pn-t">Claude</div><div class="pn-s">hossy.komatour.com を探す</div></div>
+      <div class="path-node"><div class="pn-k">1</div><div class="pn-t">Claude</div><div class="pn-s">hossy.■■■■■■.com を探す</div></div>
       <span class="path-sep">→</span>
       <div class="path-node"><div class="pn-k">2</div><div class="pn-t">ムームーDNS</div><div class="pn-s">CNAME → uuid.cfargotunnel.com</div></div>
       <span class="path-sep">→</span>
@@ -689,7 +906,7 @@
     </div>
     <p class="diagram-note" style="margin-top:18px;">成功した経路（案内係だけ Cloudflare へ。ドメインの名義はムームーのまま）</p>
     <div class="path-row">
-      <div class="path-node ok"><div class="pn-k">1</div><div class="pn-t">Claude</div><div class="pn-s">同じ hossy.komatour.com</div></div>
+      <div class="path-node ok"><div class="pn-k">1</div><div class="pn-t">Claude</div><div class="pn-s">同じ hossy.■■■■■■.com</div></div>
       <span class="path-sep">→</span>
       <div class="path-node ok"><div class="pn-k">2</div><div class="pn-t">Cloudflare DNS</div><div class="pn-s">オレンジ雲（Proxied）の hossy</div></div>
       <span class="path-sep">→</span>
@@ -698,14 +915,14 @@
       <div class="path-node ok"><div class="pn-k">4</div><div class="pn-t">自宅Mac</div><div class="pn-s">同じトンネルIDで中継</div></div>
     </div>
     <div class="callout" style="margin-top:18px;">
-      <b>ドメインを「移管」したわけではない。</b> ムームーのネームサーバー設定を「GMOペパボ以外」にし、<code>peaches.ns.cloudflare.com</code> / <code>rudy.ns.cloudflare.com</code> を書いただけ。komatour.com の持ち主は今もムームー。メールはロリポップのまま（MX = mx01.lolipop.jp、プロキシしない）。
+      <b>ドメインを「移管」したわけではない。</b> ムームーのネームサーバー設定を「GMOペパボ以外」にし、<code>peaches.ns.cloudflare.com</code> / <code>rudy.ns.cloudflare.com</code> を書いただけ。■■■■■■.com の持ち主は今もムームー。メールはロリポップのまま（MX = mx01.lolipop.jp、プロキシしない）。
     </div>
 
     <div class="section-title" style="font-size:15px;margin:28px 0 8px;">3社の役割（ライバルではない）</div>
     <div class="roles">
       <div class="role">
         <div class="r-name">ムームー</div>
-        <div class="r-job">ドメインの名義。komatour.com を買っている窓口。登記所に近い。ここを解約すると名前そのものが消える。</div>
+        <div class="r-job">ドメインの名義。■■■■■■.com を買っている窓口。登記所に近い。ここを解約すると名前そのものが消える。</div>
       </div>
       <div class="role">
         <div class="r-name">Cloudflare</div>
@@ -786,53 +1003,52 @@
         <div class="t-time">8/19夜</div>
         <div class="t-line-wrap"><div class="t-dot"></div></div>
         <div class="t-body">
-          <div class="t-title">コネクタURLを hossy.komatour.com に固定</div>
+          <div class="t-title">コネクタURLを hossy.■■■■■■.com に固定</div>
           <div class="t-cause">Quick Tunnelは再起動のたびにURLが変わる。CNAMEだけではCloudflareが入口を公開しなかった</div>
-          <div class="t-fix"><b>対策：</b>Named Tunnelを作成。案内係（ネームサーバー）だけCloudflareへ。MXはロリポップのまま。Claudeは https://hossy.komatour.com/mcp で接続済み</div>
+          <div class="t-fix"><b>対策：</b>Named Tunnelを作成。案内係（ネームサーバー）だけCloudflareへ。MXはロリポップのまま。Claudeは https://hossy.■■■■■■.com/mcp で接続済み</div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 8. 次のステップ -->
+  <!-- 8. 中長期プラン -->
   <section style="border-bottom:none;">
     <div class="section-head">
       <span class="section-num">08</span>
       <div>
-        <div class="section-title">次のステップ</div>
+        <div class="section-title">中長期プラン</div>
+        <div class="section-desc">フェーズ1は完了。これから、もっと働いてもらう</div>
       </div>
+    </div>
+    <div class="prose">
+      <p>帰宅したらすぐ編集できる環境は、もうできた。次は、同じ窓口のまま、<b>もっと雑務をホッシーくんに渡していく</b>。調べもの、経理、動画まわりの下ごしらえ。単純作業は任せて、自分は編集と企画に没頭する。その期待で、この報告書を閉じます。</p>
     </div>
     <div class="next-grid">
       <div class="next-card p1">
         <div class="n-pri">NEXT</div>
-        <div class="n-title">画面で会話する</div>
-        <div class="n-desc">ホッシーくんの全画面UIから文字（のち音声）で質問し、返事が返る。頭脳はClaude、顔がホッシーくん</div>
-      </div>
-      <div class="next-card p2">
-        <div class="n-pri">NEXT</div>
-        <div class="n-title">イヤホン前提の音声起こし</div>
-        <div class="n-desc">純正イヤホンでマイク精度が出た。フタ閉じ＋内蔵マイクの制約は残るが、声で起こす実装を再開できる</div>
-      </div>
-      <div class="next-card p3">
-        <div class="n-pri">PHASE 2</div>
         <div class="n-title">天気などの秘書機能</div>
         <div class="n-desc">調べものはClaude、Mac作業はホッシーくん、の分担のまま道具を足す</div>
       </div>
-      <div class="next-card p3">
+      <div class="next-card p2">
         <div class="n-pri">PHASE 2</div>
         <div class="n-title">freeeレシート</div>
         <div class="n-desc">外出先のレシート写真から仕訳。要件定義書に記載済み</div>
+      </div>
+      <div class="next-card p3">
+        <div class="n-pri">その先</div>
+        <div class="n-title">動画まわりの下ごしらえ</div>
+        <div class="n-desc">要約、サムネ案、メタデータ。編集に入る前の作業も、少しずつ任せていく</div>
       </div>
     </div>
   </section>
 
   <footer>
-    ホッシーくん AI秘書プロジェクト &nbsp;·&nbsp; Progress Report updated 2026-08-19
+    ホッシーくん AI秘書プロジェクト &nbsp;·&nbsp; Progress Report updated 2026-08-25
   </footer>
 </div>
 
 <script>
-  const overallPct = 99; // 加重平均（音声はWeb Speech 80%、Porcupine未）
+  const overallPct = 100; // 音声は対象外。入力はClaudeチャット
   const circumference = 2 * Math.PI * 95;
   const ringFg = document.getElementById('ringFg');
   const ringPct = document.getElementById('ringPct');
