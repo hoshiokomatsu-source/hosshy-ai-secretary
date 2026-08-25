@@ -9,6 +9,8 @@ import threading
 import time
 from pathlib import Path
 
+from natural_sort import natural_sort_key
+
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
 
 DEFAULT_SEQUENCE_JSX = os.path.expanduser(
@@ -87,9 +89,10 @@ def list_videos(folder: str) -> list[str]:
     if not folder_path.is_dir():
         return []
     videos = [
-        str(p) for p in sorted(folder_path.iterdir())
+        str(p) for p in folder_path.iterdir()
         if p.is_file() and p.suffix.lower() in VIDEO_EXTS and not p.name.startswith(".")
     ]
+    videos.sort(key=lambda path: natural_sort_key(Path(path).name))
     return videos
 
 

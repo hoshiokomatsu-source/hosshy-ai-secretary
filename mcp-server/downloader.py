@@ -7,6 +7,8 @@ from pathlib import Path
 from datetime import datetime
 from playwright.async_api import async_playwright, Download, TimeoutError as PlaywrightTimeoutError
 
+from natural_sort import natural_sort_key
+
 DOWNLOAD_BUTTON_SELECTOR = (
     "input[type='button'][value*='ダウンロード'], "
     "button:has-text('ダウンロード'), "
@@ -299,7 +301,10 @@ def _expand_archives(files: list[dict], download_dir: str) -> list[dict]:
             expanded.extend(extracted)
         else:
             expanded.append(f)
-    return expanded
+    return sorted(
+        expanded,
+        key=lambda f: natural_sort_key(str(f.get("stem") or f.get("name") or "")),
+    )
 
 
 def _unzip_archive(zip_path: str, dest_dir: str, folder_name: str) -> list[dict]:

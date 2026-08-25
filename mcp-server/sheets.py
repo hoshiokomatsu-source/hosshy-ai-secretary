@@ -12,6 +12,8 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from natural_sort import natural_sort_key
+
 def _spreadsheet_id() -> str:
     return os.getenv("SPREADSHEET_ID", "")
 
@@ -73,6 +75,11 @@ async def write_files_to_sheet(files: list[dict]) -> str:
             delivery = last_delivery + timedelta(days=2)
         else:
             delivery = today + timedelta(days=14)
+
+        files = sorted(
+            files,
+            key=lambda f: natural_sort_key(str(f.get("stem") or f.get("name") or "")),
+        )
 
         rows = []
         for f in files:
