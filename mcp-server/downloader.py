@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 from playwright.async_api import async_playwright, Download, TimeoutError as PlaywrightTimeoutError
 
-from natural_sort import natural_sort_key
+from natural_sort import sort_file_records
 
 DOWNLOAD_BUTTON_SELECTOR = (
     "input[type='button'][value*='ダウンロード'], "
@@ -301,10 +301,7 @@ def _expand_archives(files: list[dict], download_dir: str) -> list[dict]:
             expanded.extend(extracted)
         else:
             expanded.append(f)
-    return sorted(
-        expanded,
-        key=lambda f: natural_sort_key(str(f.get("stem") or f.get("name") or "")),
-    )
+    return sort_file_records(expanded)
 
 
 def _unzip_archive(zip_path: str, dest_dir: str, folder_name: str) -> list[dict]:
@@ -356,6 +353,28 @@ def _zip_member_name(info) -> str:
         except Exception:
             continue
     return name
+
+
+def records_from_folder(folder: str) -> list[dict]:
+    """フォルダ内の動画を Finder の名前順で返す。転記・Premiere の共通ソース。"""
+    folder_path = Path(folder)
+    if not folder_path.is_dir():
+        return []
+    folder_name = folder_path.name
+    records = []
+    for path in folder_path.iterdir():
+        if not path.is_file() or path.name.startswith("."):
+            continue
+        if path.suffix.lower() not in VIDEO_EXTS:
+            continue
+        records.append({
+            "name": path.name,
+            "path": str(path),
+            "size": path.stat().st_size,
+            "stem": _extract_stem(path.name),
+            "folder": folder_name,
+        })
+    return sort_file_records(records)
 
 
 def _extract_stem(filename: str) -> str:

@@ -5,7 +5,8 @@ from __future__ import annotations
 import os
 from datetime import datetime
 
-from downloader import download_gigafile_url
+from downloader import download_gigafile_url, records_from_folder
+from natural_sort import sort_file_records
 from premiere import folder_from_downloaded_files, prepare_premiere_project
 from sheets import write_files_to_sheet
 from status import set_status
@@ -43,6 +44,15 @@ async def run_download_pipeline(gigafile_url: str) -> str:
         return last_job_status
 
     print(f"[hossy] ダウンロード結果: {len(downloaded_files)} 件 {[f.get('name') for f in downloaded_files]}")
+    premiere_folder = folder_from_downloaded_files(downloaded_files, download_dir)
+    if premiere_folder:
+        from_disk = records_from_folder(premiere_folder)
+        if from_disk:
+            print(f"[hossy] Finder順に並べ直した: {[f.get('name') for f in from_disk]}")
+            downloaded_files = from_disk
+    else:
+        downloaded_files = sort_file_records(downloaded_files)
+
     if not downloaded_files:
         last_job_status = f"[{started_at}開始] ダウンロードできるファイルが見つかりませんでした。URLを確認してください。"
         print("[hossy] ファイル0件のためシート転記をスキップしました")
@@ -62,7 +72,6 @@ async def run_download_pipeline(gigafile_url: str) -> str:
     lines.append("")
     lines.append(f"📊 スプレッドシート: {sheet_result}")
 
-    premiere_folder = folder_from_downloaded_files(downloaded_files, download_dir)
     if premiere_folder:
         set_status("working", "Premiere でシーケンス作ってるよ…", os.path.basename(premiere_folder), progress=95, pose="premiere")
         try:

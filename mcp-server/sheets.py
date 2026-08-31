@@ -12,7 +12,7 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from natural_sort import natural_sort_key
+from natural_sort import sort_file_records
 
 def _spreadsheet_id() -> str:
     return os.getenv("SPREADSHEET_ID", "")
@@ -76,10 +76,8 @@ async def write_files_to_sheet(files: list[dict]) -> str:
         else:
             delivery = today + timedelta(days=14)
 
-        files = sorted(
-            files,
-            key=lambda f: natural_sort_key(str(f.get("stem") or f.get("name") or "")),
-        )
+        files = sort_file_records(files)
+        print(f"[sheets] 転記順: {[f.get('stem') or f.get('name') for f in files]}")
 
         rows = []
         for f in files:
@@ -256,10 +254,8 @@ def _last_delivery_from_previous_tab(sheet, spreadsheet_id: str, tab_name: str, 
 
 
 def _sheet_title(stem: str) -> str:
-    """『1-1』などが日付に化けるのを防ぐ。"""
-    if re.match(r"^\d+-\d+", stem):
-        return f"'{stem}"
-    return stem
+    """『1-1』や『ABOVE1-1』が日付・数値に化けるのを防ぐ。"""
+    return f"'{stem}"
 
 
 def _tab_sheet_id(sheet, spreadsheet_id: str, tab_name: str) -> int:
