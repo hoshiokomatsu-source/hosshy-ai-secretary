@@ -3,8 +3,8 @@
 set -euo pipefail
 
 DOWNLOAD_DIR="${DOWNLOAD_DIR:-/Users/hoshiokomatsu/Dropbox/Movie Edit/R4/Active}"
-PYTHON="${HOSSY_PYTHON:-/Users/hoshiokomatsu/hosshy/venv/bin/python}"
-SERVER_DIR="${HOSSY_SERVER_DIR:-/Users/hoshiokomatsu/hosshy/mcp-server}"
+PYTHON="${HOSSY_PYTHON:-/Users/hoshiokomatsu/Documents/src/hossy/mcp-server/venv/bin/python}"
+SERVER_DIR="${HOSSY_SERVER_DIR:-/Users/hoshiokomatsu/Documents/src/hossy/mcp-server}"
 URL_FILE="/tmp/hossy_public_url.txt"
 
 PUBLIC_URL=""

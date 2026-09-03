@@ -29,6 +29,9 @@ from premiere import (
     resolve_media_folder,
 )
 from status import set_status
+import freee as freee_api
+import amazon as amazon_api
+import freee_ui
 
 load_dotenv()
 
@@ -178,6 +181,187 @@ def _premiere_running_hint() -> str | None:
     if premiere_is_running() and not read_premiere_result():
         return "⏳ Premiere は起動しています。プロジェクト作成〜シーケンス作成の完了を待っています。"
     return None
+
+
+@mcp.tool()
+async def freee_check() -> str:
+    """freeeの未登録口座明細を確認する。「経費チェックして」「freee確認して」で呼び出せる。
+
+    ルール（QuickPay=プライベート、コメダ・スタバ等=会議費）と過去データを
+    もとに自動分類し、確認が必要なものをリストアップする。
+    """
+    set_status("working", "経費チェックしてるよ…ちょっと待ってて！", "", pose="keihi")
+    try:
+        loop = asyncio.get_running_loop()
+        summary = await loop.run_in_executor(None, freee_api.get_categorization_summary)
+    except Exception as e:
+        set_status("idle", "zzz…", "", pose="sleep")
+        return f"❌ freee API エラー: {e}"
+    set_status("idle", "zzz…", "", pose="sleep")
+
+    lines: list[str] = []
+    auto = summary["auto"]
+    skip = summary["skip"]
+    review = summary["review"]
+    amazon = summary["amazon"]
+
+    lines.append(f"📊 未登録明細: 自動仕分け {len(auto)}件 / スキップ {len(skip)}件 / 要確認 {len(review)}件 / Amazon {len(amazon)}件\n")
+
+    if auto:
+        lines.append("✅ 自動仕分け（確認後に登録できます）")
+        for item in auto:
+            lines.append(f"  {item['txn'].get('date','')} ¥{item['amount']:,} {item['description']} → {item['category']}")
+        lines.append("")
+
+    if amazon:
+        lines.append("🛒 Amazon（要確認）")
+        for i, item in enumerate(amazon, 1):
+            lines.append(f"  [{i}] {item['date']} ¥{item['amount']:,} {item['description']}")
+        lines.append("  → 「Amazon の[番号]は経費（消耗品費）」「Amazon の[番号]はプライベート」と教えてください")
+        lines.append("")
+
+    if review:
+        lines.append("❓ 判断できなかったもの")
+        for i, item in enumerate(review, 1):
+            lines.append(f"  [{i}] {item['txn'].get('date','')} ¥{item['amount']:,} {item['description']}")
+        lines.append("  → 「[番号]は会議費」「[番号]はプライベート」と教えてください")
+        lines.append("")
+
+    if skip:
+        lines.append(f"⏭ スキップ（プライベート判定）: {len(skip)}件")
+
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def freee_add(
+    txn_date: str,
+    description: str,
+    amount: int,
+    account_item_name: str,
+) -> str:
+    """freeeに仕訳を1件登録する。「これは会議費で登録して」「[番号]は消耗品費」で呼び出せる。
+
+    Args:
+        txn_date: 取引日（YYYY-MM-DD）
+        description: 摘要（店名など）
+        amount: 金額（正の整数、円）
+        account_item_name: 勘定科目名（例: 会議費、消耗品費、交通費）
+    """
+    set_status("working", "freeeに登録してるよ…", "", pose="keihi")
+    try:
+        loop = asyncio.get_running_loop()
+        txns = await loop.run_in_executor(None, freee_api.get_unregistered_txns)
+        txn = next(
+            (t for t in txns
+             if t.get("date", "") == txn_date
+             and abs(int(t.get("amount", 0))) == amount),
+            None
+        )
+        if txn is None:
+            set_status("idle", "zzz…", "", pose="sleep")
+            return f"❌ {txn_date} ¥{amount:,} の未登録明細が見つかりませんでした。"
+
+        def _register():
+            return freee_ui.register_txns(
+                registrations=[{"txn": txn, "category": account_item_name}],
+                skips=[],
+            )
+
+        result = await loop.run_in_executor(None, _register)
+        set_status("idle", "zzz…", "", pose="sleep")
+
+        if result.get("error"):
+            return f"❌ {result['error']}"
+        if result["registered"]:
+            return f"✅ 登録しました: {txn_date} ¥{amount:,} {description} → {account_item_name}"
+        if result["failed"]:
+            err = result["failed"][0].get("error", "不明なエラー")
+            return f"❌ 登録エラー: {err}"
+        return f"⚠️ 明細が見つかりませんでした: {txn_date} ¥{amount:,}"
+    except Exception as e:
+        set_status("idle", "zzz…", "", pose="sleep")
+        return f"❌ 登録エラー: {e}"
+
+
+@mcp.tool()
+async def freee_amazon_list() -> str:
+    """freeeのAmazon未登録明細一覧を返す。「Amazon照合して」「Amazonの経費確認」で呼び出せる。
+
+    このツールでfreeeのAmazon明細を取得後、ブラウザで
+    https://www.amazon.co.jp/gp/css/order-history?orderFilter=months-3
+    を開いて日付・金額で照合し、各明細が何の購入かを提案してください。
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        summary = await loop.run_in_executor(None, freee_api.get_categorization_summary)
+        amazon_txns = summary["amazon"]
+
+        if not amazon_txns:
+            return "Amazon の未登録明細はありませんでした。"
+
+        lines = [f"🛒 freeeのAmazon未登録明細 {len(amazon_txns)}件：\n"]
+        for i, item in enumerate(amazon_txns, 1):
+            lines.append(f"  [{i}] {item['date']} ¥{item['amount']:,}  {item['description']}")
+
+        lines.append("")
+        lines.append("↑ これらをAmazonの注文履歴（過去3ヶ月）と照合して商品名を確認し、")
+        lines.append("各明細が経費か否かをホシさんに提案してください。")
+        lines.append("URL: https://www.amazon.co.jp/gp/css/order-history?orderFilter=months-3")
+        return "\n".join(lines)
+
+    except Exception as e:
+        return f"❌ freee API エラー: {e}"
+
+
+@mcp.tool()
+async def freee_auto() -> str:
+    """自動仕分けできた明細とプライベート判定の明細を一括でfreeeに登録・除外する。
+    「自動登録して」「まとめて登録」で呼び出せる。
+
+    ルールと過去データで確実に判断できたものだけを処理する。
+    経費 → 勘定科目を付けて登録、プライベート → 対象外にする。
+    Amazon・判断不明なものは含まれない。
+    """
+    set_status("working", "freeeに一括登録してるよ…ちょっと待ってて！", "", pose="keihi")
+    try:
+        loop = asyncio.get_running_loop()
+        summary = await loop.run_in_executor(None, freee_api.get_categorization_summary)
+    except Exception as e:
+        set_status("idle", "zzz…", "", pose="sleep")
+        return f"❌ freee API エラー: {e}"
+
+    auto = summary["auto"]    # 経費として登録するもの
+    skip = summary["skip"]    # 対象外（プライベート）にするもの
+
+    if not auto and not skip:
+        set_status("idle", "zzz…", "", pose="sleep")
+        return "自動処理できる明細はありませんでした。"
+
+    def _register_all():
+        return freee_ui.register_txns(
+            registrations=auto,
+            skips=skip,
+        )
+
+    result = await loop.run_in_executor(None, _register_all)
+    set_status("idle", "zzz…", "", pose="sleep")
+
+    if result.get("error"):
+        return f"❌ {result['error']}"
+
+    reg_count = len(result.get("registered", []))
+    skip_count = len(result.get("skipped", []))
+    fail_count = len(result.get("failed", []))
+
+    lines = [f"一括処理完了: 経費登録 {reg_count}件 / 対象外 {skip_count}件 / 失敗 {fail_count}件"]
+
+    if result.get("failed"):
+        lines.append("\n失敗したもの:")
+        for f in result["failed"]:
+            lines.append(f"  ❌ txn_id={f['txn_id']}: {f.get('error', '不明')}")
+
+    return "\n".join(lines)
 
 
 if __name__ == "__main__":

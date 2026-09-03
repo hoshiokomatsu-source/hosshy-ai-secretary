@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>/Users/hoshiokomatsu/hosshy/scripts/start-tunnel.sh</string>
+    <string>/Users/hoshiokomatsu/Documents/src/hossy/scripts/start-tunnel.sh</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

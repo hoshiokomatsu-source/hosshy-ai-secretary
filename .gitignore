@@ -23,6 +23,17 @@ token.json
 # Logs
 *.log
 
+# Chrome profile data
+hosshy_copy2/chrome-ui/
+hosshy_copy2/HossyUI.app/
+
+# freee session cache
+mcp-server/.freee_session.json
+
+# SSL certs
+cert.pem
+
 # Editor
 .cursor/
 *.swp
+hossy_copy/
