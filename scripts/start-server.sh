@@ -25,4 +25,4 @@ fi
 
 echo "Using PUBLIC_URL=$PUBLIC_URL"
 cd "$SERVER_DIR"
-exec caffeinate -dims env DOWNLOAD_DIR="$DOWNLOAD_DIR" PUBLIC_URL="$PUBLIC_URL" "$PYTHON" server.py
+exec caffeinate -s env DOWNLOAD_DIR="$DOWNLOAD_DIR" PUBLIC_URL="$PUBLIC_URL" "$PYTHON" server.py
