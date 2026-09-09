@@ -273,7 +273,18 @@ function apply(data) {
 
   const pose = normalizePose(state, data.pose);
   stage.className = "stage " + state + " pose-" + pose;
-  lineEl.textContent = state === "idle" ? "" : (data.line || "仕事してるよ…");
+
+  // idle 時はポーズに合わせた一言
+  const IDLE_LINES = {
+    sleep:   "zzz…",
+    read:    "読書中…",
+    tea:     "お茶休憩中…",
+    stretch: "ストレッチ中…",
+    phone:   "通話中…",
+  };
+  lineEl.textContent = state === "idle"
+    ? (IDLE_LINES[pose] || "")
+    : (data.line || "仕事してるよ…");
   detailEl.textContent = state === "idle" ? currentQuote : (data.detail || "");
   if (state === "working") {
     if (data.progress == null || data.progress === "") {
