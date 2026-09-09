@@ -273,7 +273,7 @@ function apply(data) {
 
   const pose = normalizePose(state, data.pose);
   stage.className = "stage " + state + " pose-" + pose;
-  lineEl.textContent = data.line || (state === "idle" ? "zzz…" : "仕事してるよ…");
+  lineEl.textContent = state === "idle" ? "zzz…" : (data.line || "仕事してるよ…");
   detailEl.textContent = state === "idle" ? currentQuote : (data.detail || "");
   if (state === "working") {
     if (data.progress == null || data.progress === "") {
