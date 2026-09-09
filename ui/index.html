@@ -43,6 +43,9 @@
   }
   .idle.pose-sleep .char-sleep,
   .idle.pose-read .char-read,
+  .idle.pose-tea .char-tea,
+  .idle.pose-stretch .char-stretch,
+  .idle.pose-phone .char-phone,
   .idle.pose-done .char-done,
   .working.pose-keihi .char-keihi,
   .wake .char-listen,
@@ -57,6 +60,9 @@
   }
   .idle.pose-sleep .char-sleep { animation: sleep 3.6s ease-in-out infinite; }
   .idle.pose-read .char-read { animation: sleep 4.2s ease-in-out infinite; }
+  .idle.pose-tea .char-tea { animation: sleep 4.0s ease-in-out infinite; }
+  .idle.pose-stretch .char-stretch { animation: sleep 3.2s ease-in-out infinite; }
+  .idle.pose-phone .char-phone { animation: sleep 3.8s ease-in-out infinite; }
   .working.pose-keihi .char-keihi { animation: work-bob 1.4s ease-in-out infinite; }
   .wake .char-listen,
   .working .char {
@@ -122,16 +128,19 @@
 <body>
 <div class="stage idle pose-sleep" id="stage">
   <div class="char-wrap">
-    <img class="char char-sleep" src="/hosshy-pose-sleep.png?v=11" alt="" />
-    <img class="char char-keihi" src="/hosshy-pose-keihi.png?v=11" alt="" />
-    <img class="char char-read" src="/hosshy-pose-read.png?v=11" alt="" />
-    <img class="char char-listen" src="/hosshy-pose-listen.png?v=11" alt="" />
-    <img class="char char-link" src="/hosshy-pose-link.png?v=11" alt="" />
-    <img class="char char-download" src="/hosshy-pose-download.png?v=11" alt="" />
-    <img class="char char-files" src="/hosshy-pose-files.png?v=11" alt="" />
-    <img class="char char-sheets" src="/hosshy-pose-sheets.png?v=11" alt="" />
-    <img class="char char-premiere" src="/hosshy-pose-premiere.png?v=11" alt="" />
-    <img class="char char-done" src="/hosshy-pose-done.png?v=11" alt="" />
+    <img class="char char-sleep" src="/hosshy-pose-sleep.png?v=12" alt="" />
+    <img class="char char-keihi" src="/hosshy-pose-keihi.png?v=12" alt="" />
+    <img class="char char-read" src="/hosshy-pose-read.png?v=12" alt="" />
+    <img class="char char-tea" src="/hosshy-pose-tea.png?v=12" alt="" />
+    <img class="char char-stretch" src="/hosshy-pose-stretch.png?v=12" alt="" />
+    <img class="char char-phone" src="/hosshy-pose-phone.png?v=12" alt="" />
+    <img class="char char-listen" src="/hosshy-pose-listen.png?v=12" alt="" />
+    <img class="char char-link" src="/hosshy-pose-link.png?v=12" alt="" />
+    <img class="char char-download" src="/hosshy-pose-download.png?v=12" alt="" />
+    <img class="char char-files" src="/hosshy-pose-files.png?v=12" alt="" />
+    <img class="char char-sheets" src="/hosshy-pose-sheets.png?v=12" alt="" />
+    <img class="char char-premiere" src="/hosshy-pose-premiere.png?v=12" alt="" />
+    <img class="char char-done" src="/hosshy-pose-done.png?v=12" alt="" />
   </div>
   <div class="line" id="line">zzz…</div>
   <div class="meter" id="meter">
@@ -146,10 +155,22 @@ const lineEl = document.getElementById("line");
 const detailEl = document.getElementById("detail");
 const meterFill = document.getElementById("meterFill");
 const meterLabel = document.getElementById("meterLabel");
-const POSES = ["sleep", "read", "listen", "link", "download", "files", "sheets", "premiere", "done", "keihi"];
-const IDLE_POSES = ["sleep", "read"];
-let currentIdlePose = IDLE_POSES[Math.floor(Math.random() * IDLE_POSES.length)];
+const POSES = ["sleep", "read", "tea", "stretch", "phone", "listen", "link", "download", "files", "sheets", "premiere", "done", "keihi"];
+const IDLE_POSES = ["sleep", "read", "tea", "stretch", "phone"];
+let idlePoseIndex = Math.floor(Math.random() * IDLE_POSES.length);
+let currentIdlePose = IDLE_POSES[idlePoseIndex];
 let lastState = null;
+
+// 25分ごとにidleポーズをローテーション
+setInterval(() => {
+  idlePoseIndex = (idlePoseIndex + 1) % IDLE_POSES.length;
+  currentIdlePose = IDLE_POSES[idlePoseIndex];
+  // 今idle中なら即反映
+  if (lastState === "idle") {
+    const stage = document.getElementById("stage");
+    stage.className = stage.className.replace(/pose-\w+/, "pose-" + currentIdlePose);
+  }
+}, 25 * 60 * 1000);
 
 function vis(state) {
   if (state === "working") return "working";
