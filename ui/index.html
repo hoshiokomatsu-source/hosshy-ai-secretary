@@ -94,6 +94,20 @@
     max-width: 42em;
     white-space: pre-wrap;
   }
+  .pomo-timer {
+    position: fixed;
+    bottom: 12px;
+    right: 14px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    color: rgba(255,255,255,0.22);
+    pointer-events: none;
+    transition: color 1s;
+  }
+  .pomo-timer.break {
+    color: rgba(255,255,255,0.15);
+  }
   .meter {
     display: none;
     width: min(72vh, 72vw);
@@ -149,39 +163,72 @@
   </div>
   <div class="detail" id="detail"></div>
 </div>
+<div class="pomo-timer" id="pomoTimer">🍅 25:00</div>
 <script>
 const stage = document.getElementById("stage");
 const lineEl = document.getElementById("line");
 const detailEl = document.getElementById("detail");
 const meterFill = document.getElementById("meterFill");
 const meterLabel = document.getElementById("meterLabel");
-const POSES = ["sleep", "read", "tea", "stretch", "phone", "listen", "link", "download", "files", "sheets", "premiere", "done", "keihi"];
-const IDLE_POSES = ["sleep", "read", "tea", "stretch", "phone"];
+const pomoTimer = document.getElementById("pomoTimer");
+
+const POSES = ["sleep","read","tea","stretch","phone","listen","link","download","files","sheets","premiere","done","keihi"];
+const IDLE_POSES = ["sleep","read","tea","stretch","phone"];
 let idlePoseIndex = Math.floor(Math.random() * IDLE_POSES.length);
 let currentIdlePose = IDLE_POSES[idlePoseIndex];
 let lastState = null;
 
-// 25分ごとにidleポーズをローテーション
-setInterval(() => {
-  idlePoseIndex = (idlePoseIndex + 1) % IDLE_POSES.length;
-  currentIdlePose = IDLE_POSES[idlePoseIndex];
-  // 今idle中なら即反映
-  if (lastState === "idle") {
-    const stage = document.getElementById("stage");
-    stage.className = stage.className.replace(/pose-\w+/, "pose-" + currentIdlePose);
+// ─── ポモドーロ ─────────────────────────────────────────────
+const POMO_WORK  = 25 * 60;
+const POMO_BREAK =  5 * 60;
+let pomoPhase = "work";   // "work" | "break"
+let pomoSec   = POMO_WORK;
+
+function pomoFmt(sec) {
+  const m = String(Math.floor(sec / 60)).padStart(2, "0");
+  const s = String(sec % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function pomoTick() {
+  // idle 中だけカウント（Hossyが仕事してる間は止める）
+  if (lastState !== "idle") return;
+
+  pomoSec--;
+
+  if (pomoSec < 0) {
+    if (pomoPhase === "work") {
+      // 作業終了 → 休憩へ
+      pomoPhase = "break";
+      pomoSec   = POMO_BREAK;
+      currentIdlePose = "sleep";           // 休憩中は寝てる
+    } else {
+      // 休憩終了 → 次の作業へ
+      pomoPhase = "work";
+      pomoSec   = POMO_WORK;
+      idlePoseIndex   = (idlePoseIndex + 1) % IDLE_POSES.length;
+      currentIdlePose = IDLE_POSES[idlePoseIndex];
+    }
   }
-}, 25 * 60 * 1000);
+
+  const label = pomoPhase === "work" ? "🍅" : "💤";
+  pomoTimer.textContent = `${label} ${pomoFmt(pomoSec)}`;
+  pomoTimer.className   = "pomo-timer" + (pomoPhase === "break" ? " break" : "");
+}
+
+setInterval(pomoTick, 1000);
+// ─────────────────────────────────────────────────────────────
 
 function vis(state) {
   if (state === "working") return "working";
-  if (state === "wake") return "wake";
+  if (state === "wake")    return "wake";
   return "idle";
 }
 
 function normalizePose(state, pose) {
   if (pose === "laptop") return "download";
-  if (pose === "desk") return "sheets";
-  if (state === "wake") return "listen";
+  if (pose === "desk")   return "sheets";
+  if (state === "wake")  return "listen";
   if (POSES.includes(pose)) return pose;
   return state === "idle" ? currentIdlePose : "download";
 }
@@ -189,9 +236,9 @@ function normalizePose(state, pose) {
 function apply(data) {
   const state = vis(data.state);
 
-  // idle に切り替わった瞬間にランダムでポーズを決める
+  // idle に切り替わった瞬間：ポモドーロのフェーズに合ったポーズを使う
   if (state === "idle" && lastState !== "idle") {
-    currentIdlePose = IDLE_POSES[Math.floor(Math.random() * IDLE_POSES.length)];
+    currentIdlePose = pomoPhase === "break" ? "sleep" : IDLE_POSES[idlePoseIndex];
   }
   lastState = state;
 
