@@ -83,7 +83,7 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if parsed.path == "/api/idle":
-            set_status("idle", "zzz… ホッシーくん！って呼んでくれたら起きるよ", "", pose="sleep")
+            set_status("idle", "zzz…", "", pose="sleep")
             self._json(200, {"ok": True})
             return
 

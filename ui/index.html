@@ -179,6 +179,31 @@ let idlePoseIndex = Math.floor(Math.random() * IDLE_POSES.length);
 let currentIdlePose = IDLE_POSES[idlePoseIndex];
 let lastState = null;
 
+// ─── 格言 ────────────────────────────────────────────────────
+const QUOTES = [
+  "千里の道も一歩から",
+  "七転び八起き",
+  "継続は力なり",
+  "急がば回れ",
+  "石の上にも三年",
+  "案ずるより産むが易し",
+  "失敗は成功のもと",
+  "習うより慣れろ",
+  "今日できることを明日に延ばすな",
+  "知は力なり",
+  "時は金なり",
+  "好奇心は猫をも殺す",
+  "百聞は一見に如かず",
+  "備えあれば憂いなし",
+  "終わりよければすべてよし",
+];
+let currentQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+function nextQuote() {
+  const idx = Math.floor(Math.random() * QUOTES.length);
+  currentQuote = QUOTES[idx];
+}
+// ─────────────────────────────────────────────────────────────
+
 // ─── ポモドーロ ─────────────────────────────────────────────
 const POMO_WORK  = 25 * 60;
 const POMO_BREAK =  5 * 60;
@@ -197,18 +222,20 @@ function pomoTick() {
 
   pomoSec--;
 
-  if (pomoSec < 0) {
+    if (pomoSec < 0) {
     if (pomoPhase === "work") {
       // 作業終了 → 休憩へ
       pomoPhase = "break";
       pomoSec   = POMO_BREAK;
       currentIdlePose = "sleep";           // 休憩中は寝てる
+      nextQuote();
     } else {
       // 休憩終了 → 次の作業へ
       pomoPhase = "work";
       pomoSec   = POMO_WORK;
       idlePoseIndex   = (idlePoseIndex + 1) % IDLE_POSES.length;
       currentIdlePose = IDLE_POSES[idlePoseIndex];
+      nextQuote();
     }
   }
 
@@ -227,11 +254,12 @@ function vis(state) {
 }
 
 function normalizePose(state, pose) {
+  if (state === "idle") return currentIdlePose;   // idle は常に currentIdlePose を使う
   if (pose === "laptop") return "download";
   if (pose === "desk")   return "sheets";
   if (state === "wake")  return "listen";
   if (POSES.includes(pose)) return pose;
-  return state === "idle" ? currentIdlePose : "download";
+  return "download";
 }
 
 function apply(data) {
@@ -246,7 +274,7 @@ function apply(data) {
   const pose = normalizePose(state, data.pose);
   stage.className = "stage " + state + " pose-" + pose;
   lineEl.textContent = data.line || (state === "idle" ? "zzz…" : "仕事してるよ…");
-  detailEl.textContent = data.detail || "";
+  detailEl.textContent = state === "idle" ? currentQuote : (data.detail || "");
   if (state === "working") {
     if (data.progress == null || data.progress === "") {
       meterFill.style.width = "12%";
