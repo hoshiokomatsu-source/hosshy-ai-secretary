@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import time
 from datetime import datetime
 
 STATUS_PATH = "/tmp/hossy_status.json"
+# working のまま実作業が無いときは、この秒数で待機に戻す
+PREMIERE_IDLE_GRACE_SEC = 20
+WORKING_STALE_SEC = 20 * 60
 
 POSES = (
     "sleep",
@@ -53,8 +58,53 @@ def infer_pose(state: str, line: str) -> str:
     return "download"
 
 
+def mark_finished(line: str = "お仕事終わったよ！また呼んでね", detail: str = "", pose: str = "done") -> None:
+    """実作業が終わったら必ずここを通す。working のまま残さない。"""
+    set_status("idle", line, detail, pose=pose)
+
+
+def _premiere_running() -> bool:
+    try:
+        r = subprocess.run(
+            ["pgrep", "-f", "Adobe Premiere Pro .*\\.app/Contents/MacOS/Adobe Premiere Pro"],
+            capture_output=True,
+            text=True,
+        )
+        return r.returncode == 0 and bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def _status_age_sec(data: dict) -> float:
+    ts = data.get("updated_ts")
+    if isinstance(ts, (int, float)):
+        return max(0.0, time.time() - float(ts))
+    return WORKING_STALE_SEC
+
+
+def _is_premiere_job(data: dict) -> bool:
+    pose = str(data.get("pose") or "")
+    text = f"{data.get('line') or ''} {data.get('detail') or ''}"
+    return pose == "premiere" or "Premiere" in text or "シーケンス" in text
+
+
+def _recover_stale_working(data: dict) -> dict:
+    """作業中表示は、実際に Premiere / ダウンロードが動いている間だけ。終わっていたら待機に戻す。"""
+    if data.get("state") != "working":
+        return data
+    age = _status_age_sec(data)
+    premiere_up = _premiere_running()
+    if _is_premiere_job(data) and not premiere_up and age >= PREMIERE_IDLE_GRACE_SEC:
+        mark_finished()
+        return _read_raw() or dict(IDLE)
+    if not premiere_up and age >= WORKING_STALE_SEC:
+        mark_finished()
+        return _read_raw() or dict(IDLE)
+    return data
+
+
 def set_status(state: str, line: str, detail: str = "", progress=None, pose: str | None = None) -> None:
-    prev = read_status()
+    prev = _read_raw() or dict(IDLE)
     if pose not in POSES:
         pose = infer_pose(state, line)
     if state == "idle" and pose not in ("sleep", "done"):
@@ -74,6 +124,7 @@ def set_status(state: str, line: str, detail: str = "", progress=None, pose: str
         "pose": pose,
         "progress": progress,
         "updated_at": datetime.now().strftime("%H:%M:%S"),
+        "updated_ts": time.time(),
     }
     tmp = STATUS_PATH + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
@@ -81,7 +132,7 @@ def set_status(state: str, line: str, detail: str = "", progress=None, pose: str
     os.replace(tmp, STATUS_PATH)
 
 
-def read_status() -> dict:
+def _read_raw() -> dict | None:
     try:
         with open(STATUS_PATH, encoding="utf-8") as f:
             data = json.load(f)
@@ -96,4 +147,11 @@ def read_status() -> dict:
             return data
     except Exception:
         pass
-    return dict(IDLE)
+    return None
+
+
+def read_status() -> dict:
+    data = _read_raw()
+    if not data:
+        return dict(IDLE)
+    return _recover_stale_working(data)

@@ -106,7 +106,7 @@ def main() -> None:
     if not (UI_DIR / "index.html").exists():
         raise SystemExit(f"UI が見つかりません: {UI_DIR}")
     threading.Thread(target=_start_loop, daemon=True).start()
-    set_status("idle", "zzz… ホッシーくん！って呼んでくれたら起きるよ", "", pose="sleep")
+    set_status("idle", "", "", pose="sleep")
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"🦊 ホッシーくん画面: http://{HOST}:{PORT}")
     httpd.serve_forever()

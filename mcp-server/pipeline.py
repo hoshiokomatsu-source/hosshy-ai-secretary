@@ -9,7 +9,7 @@ from downloader import download_gigafile_url, records_from_folder
 from natural_sort import sort_file_records
 from premiere import folder_from_downloaded_files, prepare_premiere_project
 from sheets import write_files_to_sheet
-from status import set_status
+from status import mark_finished, set_status
 
 last_job_status = "まだダウンロードを実行していません。"
 
@@ -61,7 +61,15 @@ async def run_download_pipeline(gigafile_url: str) -> str:
 
     file_names = [f["name"] for f in downloaded_files]
     set_status("working", "シートに書いてるよ…", f"{len(file_names)} ファイル", progress=88, pose="sheets")
-    sheet_result = await write_files_to_sheet(downloaded_files)
+    try:
+        sheet_result = await write_files_to_sheet(downloaded_files)
+    except Exception as e:
+        last_job_status = (
+            f"❌ [{started_at}開始] スプレッドシート転記でエラーが発生しました。\n"
+            f"詳細: {type(e).__name__}: {e}"
+        )
+        mark_finished("うまくいかなかった…もう一回リンクを送って！", str(e), pose="sleep")
+        return last_job_status
     print(f"[hossy] シート転記: {sheet_result}")
 
     finished_at = datetime.now().strftime("%H:%M:%S")
@@ -72,16 +80,20 @@ async def run_download_pipeline(gigafile_url: str) -> str:
     lines.append("")
     lines.append(f"📊 スプレッドシート: {sheet_result}")
 
+    premiere_pending = False
     if premiere_folder:
         set_status("working", "Premiere でシーケンス作ってるよ…", os.path.basename(premiere_folder), progress=95, pose="premiere")
         try:
             premiere = prepare_premiere_project(premiere_folder)
             lines.append("")
             lines.append(f"🎬 Premiere: {premiere['message']}")
+            premiere_pending = premiere.get("status") == "started"
         except Exception as e:
             lines.append("")
             lines.append(f"🎬 Premiere: 自動セットアップに失敗しました（{type(e).__name__}: {e}）")
 
     last_job_status = "\n".join(lines)
-    set_status("idle", "お仕事終わったよ！また呼んでね", "", pose="done")
+    # Premiere 起動中は working のまま。完了は premiere.py の監視スレッドが mark_finished する。
+    if not premiere_pending:
+        mark_finished()
     return last_job_status

@@ -28,7 +28,7 @@ from premiere import (
     read_premiere_result,
     resolve_media_folder,
 )
-from status import set_status
+from status import mark_finished, set_status
 import freee as freee_api
 import amazon as amazon_api
 import freee_ui
@@ -148,7 +148,7 @@ async def prepare_premiere(folder_path: str = "") -> str:
         set_status("working", "Premiere でシーケンス作ってるよ…", folder, pose="premiere")
         result = prepare_premiere_project(folder)
     except Exception as e:
-        set_status("idle", "Premiere がうまくいかなかった…", str(e))
+        mark_finished("Premiere がうまくいかなかった…", str(e), pose="sleep")
         return f"❌ Premiere セットアップを開始できませんでした。\n詳細: {type(e).__name__}: {e}"
 
     lines = [
@@ -159,6 +159,8 @@ async def prepare_premiere(folder_path: str = "") -> str:
     ]
     if result["status"] == "started":
         lines.append("完了したら Premiere は自動で終了します。状況は「Premiereの状況を確認して」で聞けます。")
+    else:
+        mark_finished()
     return "\n".join(lines)
 
 
@@ -344,8 +346,12 @@ async def freee_auto() -> str:
             skips=skip,
         )
 
-    result = await loop.run_in_executor(None, _register_all)
-    set_status("idle", "zzz…", "", pose="sleep")
+    try:
+        result = await loop.run_in_executor(None, _register_all)
+    except Exception as e:
+        mark_finished("うまくいかなかった…", str(e), pose="sleep")
+        return f"❌ 一括登録エラー: {e}"
+    mark_finished()
 
     if result.get("error"):
         return f"❌ {result['error']}"

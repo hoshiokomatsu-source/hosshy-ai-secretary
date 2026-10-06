@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 from natural_sort import natural_sort_key
+from status import mark_finished
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
 
@@ -210,17 +211,29 @@ def prepare_premiere_project(folder: str) -> dict:
 
 
 def _ensure_quit_after_success() -> None:
-    deadline = time.time() + 300
+    started = time.time()
+    deadline = started + 300
     while time.time() < deadline:
         result = read_premiere_result()
         if result and result.startswith("OK"):
             time.sleep(3)
             if premiere_is_running():
                 quit_premiere()
+            mark_finished()
             return
         if result and result.startswith("ERROR"):
+            mark_finished("Premiere がうまくいかなかった…", result, pose="sleep")
+            return
+        if not premiere_is_running() and time.time() - started >= 20:
+            if result and result.startswith("OK"):
+                mark_finished()
+            elif result:
+                mark_finished("Premiere がうまくいかなかった…", result, pose="sleep")
+            else:
+                mark_finished()
             return
         time.sleep(2)
+    mark_finished()
 
 
 def wait_for_premiere_result(timeout_sec: float = 300) -> str:
