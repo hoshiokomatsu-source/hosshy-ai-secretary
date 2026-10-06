@@ -10,7 +10,8 @@ import time
 from pathlib import Path
 
 from natural_sort import natural_sort_key
-from status import mark_finished
+from r4_followup import r4_enabled, run_r4_followup
+from status import mark_finished, set_status
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
 
@@ -195,7 +196,7 @@ def prepare_premiere_project(folder: str) -> dict:
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    threading.Thread(target=_ensure_quit_after_success, daemon=True).start()
+    threading.Thread(target=_ensure_quit_after_success, args=(project_path,), daemon=True).start()
     return {
         "status": "started",
         "folder": folder,
@@ -205,12 +206,46 @@ def prepare_premiere_project(folder: str) -> dict:
         "message": (
             f"Premiere を起動し、{name}.prproj を作成 → 動画 {len(videos)} 本を読み込み → "
             "シーケンス作成 → 保存して Premiere を終了します。"
-            "帰宅後にプロジェクトファイルを開けば、すぐ編集できる状態です。"
+            + ("そのあと開き直して R4自動処理(調整レイヤー・Lumetri・オーディオゲインなど)をかけ、"
+               "保存して終了します。" if r4_enabled() else "")
+            + "帰宅後にプロジェクトファイルを開けば、すぐ編集できる状態です。"
         ),
     }
 
 
-def _ensure_quit_after_success() -> None:
+def _wait_premiere_quit(timeout_sec: float) -> bool:
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        if not premiere_is_running():
+            return True
+        time.sleep(1)
+    return not premiere_is_running()
+
+
+def _after_setup_ok(project_path: str) -> None:
+    """シーケンス作成が成功した後。R4 があれば開き直して R4自動処理をかけ、保存して終了する"""
+    if not r4_enabled():
+        mark_finished()
+        return
+    if not _wait_premiere_quit(30):
+        quit_premiere()
+    time.sleep(3)
+    set_status("working", "R4自動処理してるよ…触らないでね", Path(project_path).stem, progress=97, pose="premiere")
+    ok, message = run_r4_followup(project_path, _premiere_bin())
+    print(f"[hossy] R4自動処理: {message}")
+    # 正常なら runner が Premiere を終了している。残っていたら、まずアプリに終了を頼み、だめならキー操作で終了する
+    if not _wait_premiere_quit(60):
+        subprocess.run(["osascript", "-e", f'quit app "{Path(_premiere_bin()).name}"'],
+                       capture_output=True, timeout=30)
+        if not _wait_premiere_quit(60):
+            quit_premiere()
+    if ok:
+        mark_finished("お仕事終わったよ！R4自動処理までできてる", message)
+    else:
+        mark_finished("R4自動処理で止まっちゃった…", message, pose="sleep")
+
+
+def _ensure_quit_after_success(project_path: str) -> None:
     started = time.time()
     deadline = started + 300
     while time.time() < deadline:
@@ -219,14 +254,14 @@ def _ensure_quit_after_success() -> None:
             time.sleep(3)
             if premiere_is_running():
                 quit_premiere()
-            mark_finished()
+            _after_setup_ok(project_path)
             return
         if result and result.startswith("ERROR"):
             mark_finished("Premiere がうまくいかなかった…", result, pose="sleep")
             return
         if not premiere_is_running() and time.time() - started >= 20:
             if result and result.startswith("OK"):
-                mark_finished()
+                _after_setup_ok(project_path)
             elif result:
                 mark_finished("Premiere がうまくいかなかった…", result, pose="sleep")
             else:
