@@ -9,6 +9,7 @@ import os
 import subprocess
 import sys
 import time
+import unicodedata
 from pathlib import Path
 
 JOB_PATH = "/tmp/hossy_r4_job.json"
@@ -35,7 +36,9 @@ def finish(msg):
 
 
 def same_file(a, b):
-    return os.path.realpath(a) == os.path.realpath(b)
+    # Premiere は「ダ」「ポ」などの濁点・半濁点を分けた形(NFD)でパスを返すので、形をそろえてから比べる
+    norm = lambda p: unicodedata.normalize("NFC", os.path.realpath(p))
+    return norm(a) == norm(b)
 
 
 def connect_and_find_project(timeout=300):
