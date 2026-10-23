@@ -1,4 +1,4 @@
-"""シーケンス作成のあと、R4自動処理(~/src/Movie Edit/R4)をかけて、保存して Premiere を終了する。
+"""シーケンス作成のあと、R4自動処理(~/Documents/src/Movie Edit/R4)をかけて、保存して Premiere を終了する。
 
 R4自動処理はキー送信・クリックをするので、アクセシビリティ許可のある「ターミナル」で動かす
 (このサーバーは launchd から起動していて、その許可が無いため)。
@@ -13,7 +13,7 @@ import subprocess
 import time
 from pathlib import Path
 
-R4_DIR = Path(os.getenv("R4_DIR", "~/src/Movie Edit/R4")).expanduser()
+R4_DIR = Path(os.getenv("R4_DIR", "~/Documents/src/Movie Edit/R4")).expanduser()
 RUNNER_COMMAND = Path(__file__).parent / "r4_followup" / "run_r4.command"
 JOB_PATH = "/tmp/hossy_r4_job.json"
 RESULT_PATH = "/tmp/hossy_r4_result.txt"
