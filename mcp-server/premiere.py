@@ -1,44 +1,26 @@
-"""Premiere Pro でプロジェクト作成・素材読み込み・シーケンス作成を行う。"""
+"""Premiere のセットアップ作業を R4 に頼む(シーケンス作成・縦横対応・マスク自動トラッキング)。
+
+中身は R4(~/Documents/src/Movie Edit/R4)にある。ここでは素材フォルダを決めて、R4 のコマンドをターミナルで動かし、
+終わるまで見守ってホッシーくんの画面を更新するだけ。素材フォルダに作業ファイルは残さない。
+"""
 
 from __future__ import annotations
 
-import json
 import os
 import subprocess
 import threading
-import time
 from pathlib import Path
 
+import r4
 from natural_sort import natural_sort_key
-from r4_followup import r4_enabled, run_r4_followup
 from status import mark_finished, set_status
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
+# シーケンス作成 + R4自動処理は本数が多いと1時間を超える。トラッキングは1シーケンス約9分
+SETUP_TIMEOUT_SEC = 3 * 60 * 60
+TRACKING_TIMEOUT_SEC = 12 * 60 * 60
 
-DEFAULT_SEQUENCE_JSX = os.path.expanduser(
-    "~/Dropbox/Movie Edit/R4/my_project/SQ/NewSequence.jsx"
-)
-RESULT_PATH = "/tmp/hossy_premiere_result.txt"
-GENERATED_JSX = "/tmp/hossy_premiere_setup.jsx"
-SEQUENCE_RUN_JSX = "/tmp/hossy_NewSequence_run.jsx"
-
-
-def _premiere_bin() -> str:
-    env = os.getenv("PREMIERE_BIN")
-    if env:
-        return env
-    for year in (2026, 2025, 2024):
-        path = (
-            f"/Applications/Adobe Premiere Pro {year}/"
-            f"Adobe Premiere Pro {year}.app/Contents/MacOS/Adobe Premiere Pro {year}"
-        )
-        if os.path.exists(path):
-            return path
-    raise FileNotFoundError("Adobe Premiere Pro が見つかりません。")
-
-
-def _sequence_jsx() -> str:
-    return os.getenv("SEQUENCE_JSX", DEFAULT_SEQUENCE_JSX)
+PREMIERE_OPEN_MESSAGE = "Premiere が開いています。作業を保存して Premiere を閉じてから、もう一度頼んでください。"
 
 
 def premiere_is_running() -> bool:
@@ -53,39 +35,6 @@ def premiere_is_running() -> bool:
         return False
 
 
-def quit_premiere() -> None:
-    """Cmd+S のあと Cmd+Q で Premiere を終了する。tell quit はダイアログ待ちで固まらない。"""
-    script = '''
-tell application "System Events"
-  set procName to ""
-  repeat with n in {"Adobe Premiere Pro 2026", "Adobe Premiere Pro 2025", "Adobe Premiere Pro 2024"}
-    if exists (process n) then
-      set procName to (n as text)
-      exit repeat
-    end if
-  end repeat
-  if procName is "" then return
-  tell process procName
-    set frontmost to true
-    delay 0.4
-    keystroke "s" using command down
-    delay 2
-    keystroke "q" using command down
-    delay 1
-    keystroke return
-  end tell
-end tell
-'''
-    try:
-        subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=20)
-    except subprocess.TimeoutExpired:
-        pass
-    deadline = time.time() + 20
-    while time.time() < deadline and premiere_is_running():
-        time.sleep(1)
-
-
-
 def list_videos(folder: str) -> list[str]:
     folder_path = Path(folder)
     if not folder_path.is_dir():
@@ -96,6 +45,12 @@ def list_videos(folder: str) -> list[str]:
     ]
     videos.sort(key=lambda path: natural_sort_key(Path(path).name))
     return videos
+
+
+def _count_videos(folder: str) -> int:
+    """縦横対応で -横 / -縦 に分けたあとのフォルダも数える"""
+    name = Path(folder).name
+    return len(list_videos(folder)) + sum(len(list_videos(os.path.join(folder, f"{name}-{o}"))) for o in ("横", "縦"))
 
 
 def resolve_media_folder(folder: str | None, download_dir: str) -> str:
@@ -117,168 +72,101 @@ def resolve_media_folder(folder: str | None, download_dir: str) -> str:
     return str(candidates[0])
 
 
-def _strip_alerts(src: str) -> str:
-    return src.replace("alert(", "$.writeln(")
+def _watch(kind: str, label: str, timeout_sec: float, done_line: str) -> None:
+    """ジョブが終わるまで待って、ホッシーくんの画面を待機に戻す"""
+    def progress(status: dict) -> None:
+        set_status("working", f"{kind}してるよ…触らないでね", status.get("last_line", "")[-80:], pose="premiere")
+
+    status = r4.wait_job(timeout_sec, progress)
+    state, last = status["state"], status.get("last_line", "")
+    print(f"[hossy] {kind}({label}): {state} {last}")
+    if state == "done":
+        mark_finished(done_line, last)
+    elif state == "timeout":
+        mark_finished(f"{kind}が終わらない…画面を見てみて", last, pose="sleep")
+    else:
+        mark_finished(f"{kind}で止まっちゃった…", last, pose="sleep")
 
 
-def _write_sequence_copy() -> str:
-    original = Path(_sequence_jsx())
-    if not original.exists():
-        raise FileNotFoundError(f"NewSequence.jsx がありません: {original}")
-    text = original.read_text(encoding="utf-8")
-    Path(SEQUENCE_RUN_JSX).write_text(_strip_alerts(text), encoding="utf-8")
-    return SEQUENCE_RUN_JSX
+def _start(kind: str, label: str, argv: list[str], cwd: str, timeout_sec: float, done_line: str) -> None:
+    r4.start_job(kind, label, argv, cwd)
+    set_status("working", f"{kind}してるよ…触らないでね", label, pose="premiere")
+    threading.Thread(target=_watch, args=(kind, label, timeout_sec, done_line), daemon=True).start()
 
 
-def _write_setup_jsx(project_path: str, media_paths: list[str], sequence_jsx: str) -> str:
-    template_path = Path(__file__).parent / "premiere_scripts" / "setup_project.jsx.tmpl"
-    template = template_path.read_text(encoding="utf-8")
-    jsx = (
-        template
-        .replace("__RESULT_PATH__", json.dumps(RESULT_PATH, ensure_ascii=False))
-        .replace("__PROJECT_PATH__", json.dumps(project_path, ensure_ascii=False))
-        .replace("__MEDIA_PATHS__", json.dumps(media_paths, ensure_ascii=False))
-        .replace("__SEQUENCE_JSX__", json.dumps(sequence_jsx, ensure_ascii=False))
-    )
-    Path(GENERATED_JSX).write_text(jsx, encoding="utf-8")
-    return GENERATED_JSX
-
-
-def _clear_result() -> None:
-    try:
-        os.remove(RESULT_PATH)
-    except FileNotFoundError:
-        pass
-
-
-def read_premiere_result() -> str | None:
-    if not os.path.exists(RESULT_PATH):
-        return None
-    return Path(RESULT_PATH).read_text(encoding="utf-8").strip()
-
-
-def prepare_premiere_project(folder: str) -> dict:
-    """フォルダ名と同名の .prproj を作り、動画を読み込み、NewSequence.jsx でシーケンスを作る。"""
+def _setup(folder: str, kind: str, orientation: str, exception: bool, explain: str) -> dict:
     folder = os.path.abspath(folder)
     if not os.path.isdir(folder):
         raise FileNotFoundError(f"フォルダがありません: {folder}")
-
-    videos = list_videos(folder)
-    if not videos:
+    video_count = _count_videos(folder)
+    if not video_count:
         raise FileNotFoundError(f"動画がありません: {folder}")
+    r4.check_installed()
 
     name = Path(folder).name
     project_path = os.path.join(folder, f"{name}.prproj")
-    sequence_jsx = _write_sequence_copy()
-    jsx_path = _write_setup_jsx(project_path, videos, sequence_jsx)
-    _clear_result()
-
+    base = {"folder": folder, "project_path": project_path, "video_count": video_count}
+    if os.path.exists(project_path):
+        return {**base, "status": "exists",
+                "message": f"{name}.prproj はもうあります。上書きしないので、作り直すなら古いものを消すか名前を変えてください。"}
     if premiere_is_running():
-        sidecar = os.path.join(folder, "hossy_setup.jsx")
-        Path(sidecar).write_text(Path(jsx_path).read_text(encoding="utf-8"), encoding="utf-8")
-        return {
-            "status": "needs_premiere_closed",
-            "folder": folder,
-            "project_path": project_path,
-            "video_count": len(videos),
-            "jsx_path": sidecar,
-            "message": (
-                "Premiere がすでに開いているため、自動実行を止めました。"
-                "Premiere を閉じてからもう一度実行するか、"
-                f"VS Code の ExtendScript デバッガで {sidecar} を実行してください。"
-            ),
-        }
+        return {**base, "status": "needs_premiere_closed", "message": PREMIERE_OPEN_MESSAGE}
+    if r4.job_running():
+        return {**base, "status": "busy", "message": "いまほかの Premiere の作業が動いています。終わってからもう一度頼んでください。"}
 
-    bin_path = _premiere_bin()
-    subprocess.Popen(
-        [bin_path, "/C", "es.processFile", jsx_path],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-        start_new_session=True,
-    )
-    threading.Thread(target=_ensure_quit_after_success, args=(project_path,), daemon=True).start()
-    return {
-        "status": "started",
-        "folder": folder,
-        "project_path": project_path,
-        "video_count": len(videos),
-        "jsx_path": jsx_path,
-        "message": (
-            f"Premiere を起動し、{name}.prproj を作成 → 動画 {len(videos)} 本を読み込み → "
-            "シーケンス作成 → 保存して Premiere を終了します。"
-            + ("そのあと開き直して R4自動処理(調整レイヤー・Lumetri・オーディオゲインなど)をかけ、"
-               "保存して終了します。" if r4_enabled() else "")
-            + "帰宅後にプロジェクトファイルを開けば、すぐ編集できる状態です。"
-        ),
-    }
+    with_r4 = os.getenv("HOSSY_R4_AFTER", "1") != "0"
+    _start(kind, name, r4.make_project_argv(folder, orientation, exception, with_r4), str(r4.R4_DIR),
+           SETUP_TIMEOUT_SEC, "お仕事終わったよ！R4自動処理までできてる" if with_r4 else "お仕事終わったよ！")
+    return {**base, "status": "started", "message": (
+        f"ターミナルで R4 を動かして、Premiere で {name}.prproj を作ります({explain})。"
+        + ("そのあと R4自動処理(⌘6・調整レイヤー3つ・Lumetri自動・オーディオゲイン)をかけ、" if with_r4 else "")
+        + "保存して Premiere を終了します。終わるまでマウスとキーボードに触らないでください。"
+    )}
 
 
-def _wait_premiere_quit(timeout_sec: float) -> bool:
-    deadline = time.time() + timeout_sec
-    while time.time() < deadline:
-        if not premiere_is_running():
-            return True
-        time.sleep(1)
-    return not premiere_is_running()
+def prepare_premiere_project(folder: str) -> dict:
+    """横(1920×1080)。フォルダ名と同名の .prproj を作り、動画ごとにシーケンスを作って R4自動処理までかける"""
+    return _setup(folder, "シーケンス作成", "横", False, "動画ごとに 1920×1080 のシーケンス")
 
 
-def _after_setup_ok(project_path: str) -> None:
-    """シーケンス作成が成功した後。R4 があれば開き直して R4自動処理をかけ、保存して終了する"""
-    if not r4_enabled():
-        mark_finished()
-        return
-    if not _wait_premiere_quit(30):
-        quit_premiere()
-    time.sleep(3)
-    set_status("working", "R4自動処理してるよ…触らないでね", Path(project_path).stem, progress=97, pose="premiere")
-    ok, message = run_r4_followup(project_path, _premiere_bin())
-    print(f"[hossy] R4自動処理: {message}")
-    # 正常なら runner が Premiere を終了している。残っていたら、まずアプリに終了を頼み、だめならキー操作で終了する
-    if not _wait_premiere_quit(60):
-        subprocess.run(["osascript", "-e", f'quit app "{Path(_premiere_bin()).name}"'],
-                       capture_output=True, timeout=30)
-        if not _wait_premiere_quit(60):
-            quit_premiere()
-    if ok:
-        mark_finished("お仕事終わったよ！R4自動処理までできてる", message)
-    else:
-        mark_finished("R4自動処理で止まっちゃった…", message, pose="sleep")
+def prepare_mixed_project(folder: str, exception: bool = False) -> dict:
+    """縦横対応。縦横が混ざっていれば -横 / -縦 に分け、b に a の音声を同期して、1つのプロジェクトにする"""
+    explain = ("縦横が混ざっていれば「-横」「-縦」フォルダに分け、横は 1920×1080・縦は 1080×1920 のシーケンス"
+               + ("。例外なので a/b の音声同期はしない" if exception else "。b の素材には同じ番号の a の音声を同期"))
+    return _setup(folder, "縦横対応", "auto", exception, explain)
 
 
-def _ensure_quit_after_success(project_path: str) -> None:
-    started = time.time()
-    deadline = started + 300
-    while time.time() < deadline:
-        result = read_premiere_result()
-        if result and result.startswith("OK"):
-            time.sleep(3)
-            if premiere_is_running():
-                quit_premiere()
-            _after_setup_ok(project_path)
-            return
-        if result and result.startswith("ERROR"):
-            mark_finished("Premiere がうまくいかなかった…", result, pose="sleep")
-            return
-        if not premiere_is_running() and time.time() - started >= 20:
-            if result and result.startswith("OK"):
-                _after_setup_ok(project_path)
-            elif result:
-                mark_finished("Premiere がうまくいかなかった…", result, pose="sleep")
-            else:
-                mark_finished()
-            return
-        time.sleep(2)
-    mark_finished()
+def start_mask_tracking(track: int = 1) -> dict:
+    """タイムラインに開いている全シーケンスのオブジェクトマスクをトラッキングする(track=2 は V2 の素材のマスク)"""
+    r4.check_installed(tracking=True)
+    if not premiere_is_running():
+        return {"status": "needs_premiere", "message": (
+            "Premiere が開いていません。マスクを作って、トラッキングするシーケンスをタイムラインに開いてから頼んでください。")}
+    if r4.job_running():
+        return {"status": "busy", "message": "いまほかの Premiere の作業が動いています。終わってからもう一度頼んでください。"}
+    label = "V2 の素材(2周目)" if track == 2 else f"V{track}"
+    _start("マスク自動トラッキング", label, r4.tracking_argv(track), str(r4.TRACKING_DIR),
+           TRACKING_TIMEOUT_SEC, "トラッキング終わったよ！")
+    return {"status": "started", "message": (
+        f"ターミナルでマスク自動トラッキング({label} のマスク)を始めました。"
+        "タイムラインに開いているシーケンスを順番に ◀▶ で追跡して、1つ終わるごとに保存します(1シーケンス約9分)。"
+        "終わるまでマウスとキーボードに触らないでください。")}
 
 
-def wait_for_premiere_result(timeout_sec: float = 300) -> str:
-    deadline = time.time() + timeout_sec
-    while time.time() < deadline:
-        result = read_premiere_result()
-        if result:
-            return result
-        time.sleep(2)
-    return "TIMEOUT Premiere の処理結果がまだ返っていません。Premiere の画面を確認してください。"
+def premiere_job_status_text() -> str:
+    s = r4.job_status()
+    state = s["state"]
+    if state == "none":
+        return "まだ Premiere の作業(シーケンス作成・縦横対応・トラッキング)を頼まれていません。"
+    head = f"「{s['kind']}」({s['label']})"
+    tail = "\n".join(f"  {l}" for l in s.get("tail", []))
+    if state == "running":
+        return f"⏳ {head} を実行中です({s['elapsed_min']} 分経過)。\n最近の出力:\n{tail}"
+    if state == "done":
+        return f"✅ {head} が終わりました。\n{s['last_line']}\n最近の出力:\n{tail}"
+    if state == "failed":
+        return f"❌ {head} が途中で止まりました。\n{s['last_line']}\n最近の出力:\n{tail}\n(全部のログ: {r4.LOG_PATH})"
+    return f"❌ {head} は結果を残さずに終わりました(ターミナルを閉じた可能性があります)。\n最近の出力:\n{tail}"
 
 
 def folder_from_downloaded_files(files: list[dict], download_dir: str) -> str | None:

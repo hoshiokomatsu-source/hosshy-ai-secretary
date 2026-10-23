@@ -23,10 +23,11 @@ from mcp.server.transport_security import TransportSecuritySettings
 from oauth_provider import SingleUserOAuthProvider
 import pipeline
 from premiere import (
-    premiere_is_running,
+    premiere_job_status_text,
+    prepare_mixed_project,
     prepare_premiere_project,
-    read_premiere_result,
     resolve_media_folder,
+    start_mask_tracking,
 )
 from status import mark_finished, set_status
 import freee as freee_api
@@ -132,57 +133,84 @@ async def list_downloaded_files() -> str:
     return "\n".join(lines)
 
 
+def _premiere_reply(result: dict) -> str:
+    lines = [result["message"]]
+    if "folder" in result:
+        lines += [
+            f"📁 フォルダ: {result['folder']}",
+            f"🎞 動画: {result['video_count']} 本",
+            f"📄 プロジェクト: {result['project_path']}",
+        ]
+    if result["status"] == "started":
+        lines.append("時間がかかるので、状況は「Premiereの状況を確認して」(check_premiere_status)で聞いてください。")
+    return "\n".join(lines)
+
+
 @mcp.tool()
 async def prepare_premiere(folder_path: str = "") -> str:
-    """ダウンロード済みフォルダから Premiere プロジェクトを作り、素材を読み込み、動画の数だけシーケンスを作成する。
+    """ダウンロード済みフォルダから Premiere プロジェクトを作り、動画の数だけ横(1920×1080)のシーケンスを作って、
+    R4自動処理(⌘6・調整レイヤー3つ・Lumetri自動・オーディオゲイン)までかける。
 
-    プロジェクト名はフォルダ名と同じ（例: みね20260804/ → みね20260804.prproj）。
-    シーケンス作成は既存の NewSequence.jsx を実行し、保存して Premiere を終了する。
-    帰宅後に .prproj を開くと、素材とシーケンスが入った状態で編集を始められる。
+    中身は R4(~/Documents/src/Movie Edit/R4 の シーケンス作成/make_project.py --orientation 横)。
+    プロジェクト名はフォルダ名と同じ（例: みね20260804/ → みね20260804.prproj）。終わると保存して Premiere を終了する。
+    時間がかかるのでバックグラウンドで動き、この呼び出しはすぐ返る。状況は check_premiere_status で確認する。
+    Premiere が開いていたら何もせず「閉じてからもう一度」と返す。
+    縦と横が混ざった素材や、b に a の音声を同期したいときは prepare_premiere_mixed を使う。
 
     Args:
         folder_path: 動画が入ったフォルダ。空なら Active 内で一番新しいバッチフォルダを使う。
     """
     try:
         folder = resolve_media_folder(folder_path or None, DOWNLOAD_DIR)
-        set_status("working", "Premiere でシーケンス作ってるよ…", folder, pose="premiere")
-        result = prepare_premiere_project(folder)
+        return _premiere_reply(prepare_premiere_project(folder))
     except Exception as e:
-        mark_finished("Premiere がうまくいかなかった…", str(e), pose="sleep")
         return f"❌ Premiere セットアップを開始できませんでした。\n詳細: {type(e).__name__}: {e}"
 
-    lines = [
-        result["message"],
-        f"📁 フォルダ: {result['folder']}",
-        f"🎞 動画: {result['video_count']} 本",
-        f"📄 プロジェクト: {result['project_path']}",
-    ]
-    if result["status"] == "started":
-        lines.append("完了したら Premiere は自動で終了します。状況は「Premiereの状況を確認して」で聞けます。")
-    else:
-        mark_finished()
-    return "\n".join(lines)
+
+@mcp.tool()
+async def prepare_premiere_mixed(folder_path: str = "", exception: bool = False) -> str:
+    """縦横対応。縦と横が混ざった素材フォルダから、1つの Premiere プロジェクトを作って R4自動処理までかける。
+    「縦横対応して」「縦横混ざってるからシーケンス作って」で使う。
+
+    縦か横かは素材の見た目(回転を含む)で判断し、混ざっていればフォルダの中に「<フォルダ名>-横」「<フォルダ名>-縦」を作って移動する。
+    横は 1920×1080、縦は 1080×1920 のシーケンス。b の素材には同じ番号の a の音声を同期する(c 以降がある番号は同期しない)。
+    中身は R4 の シーケンス作成/make_project.py(縦横の判定 → 仕分け → プロジェクト作成 → R4自動処理)。終わると保存して Premiere を終了する。
+    時間がかかるのでバックグラウンドで動き、この呼び出しはすぐ返る。状況は check_premiere_status で確認する。
+    Premiere が開いていたら何もせず「閉じてからもう一度」と返す。
+
+    Args:
+        folder_path: 素材フォルダ。空なら Active 内で一番新しいバッチフォルダを使う。
+        exception: 「例外」と言われたら True。a/b の音声同期をしない。
+    """
+    try:
+        folder = resolve_media_folder(folder_path or None, DOWNLOAD_DIR)
+        return _premiere_reply(prepare_mixed_project(folder, exception))
+    except Exception as e:
+        return f"❌ 縦横対応を開始できませんでした。\n詳細: {type(e).__name__}: {e}"
+
+
+@mcp.tool()
+async def mask_tracking(second_round: bool = False) -> str:
+    """マスク自動トラッキング。Premiere のタイムラインに開いている全シーケンスのオブジェクトマスクを、順番に ◀▶ で追跡する。
+    「トラッキングして」で使う。「2周目」「V2 のマスクも」と言われたら second_round=True(V2 の素材のマスクを追跡する)。
+
+    先にユーザーが Premiere でマスクを作り、トラッキングするシーケンスをタイムラインに開いておく必要がある。
+    1シーケンス約9分かかるのでバックグラウンドで動き、この呼び出しはすぐ返る。状況は check_premiere_status で確認する。
+    中身は R4 の マスク自動トラッキング/track_masks.py run(2周目は --track 2)。
+
+    Args:
+        second_round: True なら 2周目(V2 の素材のマスク)。
+    """
+    try:
+        return _premiere_reply(start_mask_tracking(2 if second_round else 1))
+    except Exception as e:
+        return f"❌ トラッキングを開始できませんでした。\n詳細: {type(e).__name__}: {e}"
 
 
 @mcp.tool()
 async def check_premiere_status() -> str:
-    """直近の Premiere セットアップ結果を確認する。"""
-    result = read_premiere_result()
-    if not result:
-        if premiere_running_message := _premiere_running_hint():
-            return premiere_running_message
-        return "まだ Premiere セットアップの結果がありません。先に prepare_premiere を実行してください。"
-    if result.startswith("OK"):
-        return f"✅ {result}"
-    if result.startswith("TIMEOUT"):
-        return f"⏳ {result}"
-    return f"❌ {result}"
-
-
-def _premiere_running_hint() -> str | None:
-    if premiere_is_running() and not read_premiere_result():
-        return "⏳ Premiere は起動しています。プロジェクト作成〜シーケンス作成の完了を待っています。"
-    return None
+    """直近の Premiere の作業(prepare_premiere / prepare_premiere_mixed / mask_tracking)の状況と結果を確認する。"""
+    return premiere_job_status_text()
 
 
 @mcp.tool()
